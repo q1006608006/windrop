@@ -1,0 +1,63 @@
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0"
+          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0 http://maven.apache.org/xsd/assembly-1.1.0.xsd"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <id>make-assembly</id>
+
+    <!--    打包类型为tar.gz    -->
+    <formats>
+        <format>tar.gz</format>
+    </formats>
+
+    <includeBaseDirectory>true</includeBaseDirectory>
+
+    <dependencySets>
+
+        <!--    项目jar包及依赖的jar放置于./libs文件夹    -->
+        <dependencySet>
+            <useProjectArtifact>true</useProjectArtifact>
+            <outputDirectory>libs</outputDirectory>
+            <scope>runtime</scope>
+        </dependencySet>
+
+    </dependencySets>
+
+    <fileSets>
+
+        <!--    项目相关的脚本放置于./bin文件夹    -->
+        <fileSet>
+            <directory>src/main/scripts</directory>
+            <outputDirectory>./</outputDirectory>
+            <fileMode>755</fileMode>
+            <filtered>true</filtered>
+            <lineEnding>unix</lineEnding>
+        </fileSet>
+
+        <!--    项目配置文件放置于./conf文件夹    -->
+        <fileSet>
+            <directory>src/main/resources</directory>
+            <outputDirectory>conf</outputDirectory>
+            <filtered>false</filtered>
+        </fileSet>
+
+        <!--    外部依赖jar包放置于./libs文件夹    -->
+        <fileSet>
+            <directory>src/main/libs</directory>
+            <outputDirectory>libs</outputDirectory>
+            <filtered>false</filtered>
+        </fileSet>
+
+
+        <!--    profile文件夹下除filter资源文件以外的文件放置于./conf文件夹    -->
+        <fileSet>
+            <directory>src/main/profile/${profile.env}</directory>
+            <outputDirectory>conf</outputDirectory>
+            <filtered>false</filtered>
+            <excludes>
+                <exclude>profile.properties</exclude>
+            </excludes>
+        </fileSet>
+
+
+    </fileSets>
+</assembly>
