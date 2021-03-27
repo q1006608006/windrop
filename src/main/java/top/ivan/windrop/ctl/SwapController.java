@@ -168,10 +168,12 @@ public class SwapController {
         String type;
         byte[] srcData;
         String fileName = null;
+        String msg;
         try {
             if (clipBean instanceof TextClipBean) {
                 type = "text";
                 srcData = ((TextClipBean) clipBean).getBytes(config.getCharset());
+                msg = "推送剪切板文本到设备";
             } else if (clipBean instanceof FileClipBean) {
                 type = "file";
                 if (((FileClipBean) clipBean).getLength() > config.getMaxFileLength()) {
@@ -179,12 +181,14 @@ public class SwapController {
                 }
                 fileName = ((FileClipBean) clipBean).getFileName();
                 srcData = clipBean.getBytes();
+                msg = "推送剪切板文件到设备";
             } else if (clipBean instanceof ImageClipBean) {
                 if (clipBean.getBytes().length > config.getMaxFileLength()) {
                     return failure(HttpStatus.INTERNAL_SERVER_ERROR, "无法传输超过" + config.getMaxFileLength() / 1048576 + "MB的文件");
                 }
                 type = "image";
                 srcData = clipBean.getBytes();
+                msg = "已推送剪切板图片到设备";
             } else {
                 return failure(HttpStatus.INTERNAL_SERVER_ERROR, "不支持windrop的类型");
             }
@@ -203,7 +207,7 @@ public class SwapController {
         String sign = DigestUtils.sha256Hex(dataSha + ";" + validKeyService.getValidKey());
         response.setSign(sign);
 
-        systemNotify(type, "", false);
+        systemNotify(type, msg, false);
         return ResponseEntity.ok(response);
     }
 

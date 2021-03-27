@@ -1,6 +1,7 @@
 package top.ivan.windrop.svc;
 
 import com.alibaba.fastjson.JSONObject;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.util.StringUtils;
 import top.ivan.windrop.bean.AccessUser;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,6 +26,7 @@ import java.util.stream.Collectors;
  * @description
  * @date 2021/3/10
  */
+@Slf4j
 public class PersistUserService {
     private static String SYSTEM_KEY;
     private final WatchedFile fileHandler;
@@ -81,7 +84,15 @@ public class PersistUserService {
                     userMap.clear();
                     saveUserMap();
                 } else {
-                    data = ConvertUtil.decrypt(data, getSystemKey());
+                    try {
+                        data = ConvertUtil.decrypt(data, getSystemKey());
+                    } catch (Exception e) {
+                        log.error("", e);
+                        log.error("尝试解密文件失败，可能的情况为该应用是由其他机器移植而来！");
+                        userMap = Collections.emptyMap();
+                        saveUserMap();
+                        return userMap;
+                    }
                     BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(data)));
                     userMap = reader.lines().map(str -> JSONObject.parseObject(str, AccessUser.class)).collect(Collectors.toMap(AccessUser::getId, u -> u));
                     fileHandler.sync();

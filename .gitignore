@@ -31,5 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### default mvn file ###
 /mvnw.cmd
 /mvnw
+
+### personal-config ###
+/conf/

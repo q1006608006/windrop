@@ -119,6 +119,7 @@ public class WinDropApplication {
             try {
                 Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/auth/connect_code"));
             } catch (Exception e) {
+                alert("无法打开网页");
                 log.error("打开网页失败", e);
             }
         }
@@ -127,11 +128,13 @@ public class WinDropApplication {
             try {
                 File config = new File("conf/config.properties");
                 if (!config.exists()) {
-                    log.warn("未找到配置文件");
+                    alert("未创建'conf/config.properties'文件");
+                    log.warn("'conf/config.properties'文件不存在");
                 } else {
                     Desktop.getDesktop().open(config);
                 }
             } catch (Exception e) {
+                alert("无法打开配置文件");
                 log.error("打开文件失败", e);
             }
         }
@@ -141,11 +144,13 @@ public class WinDropApplication {
             File file = new File(logPath);
             try {
                 if (!file.exists()) {
+                    alert("未找到'logs/server.log'文件");
                     log.warn("未找到日志文件");
                 } else {
                     Desktop.getDesktop().open(file);
                 }
             } catch (Exception e) {
+                alert("无法打开日志文件");
                 log.error("打开文件失败", e);
             }
         }
@@ -160,12 +165,14 @@ public class WinDropApplication {
                     }
                     file.createNewFile();
                 } catch (Exception e) {
+                    alert("无法创建白名单文件");
                     log.error("创建文件异常，请检查", e);
                 }
             }
             try {
                 Desktop.getDesktop().open(file);
             } catch (Exception e) {
+                alert("无法打开白名单文件");
                 log.error("打开文件失败", e);
             }
         }
@@ -191,11 +198,12 @@ public class WinDropApplication {
             try {
                 Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/code/" + qrKey));
             } catch (URISyntaxException | IOException e) {
+                alert("无法打开网页");
                 log.error("打开网页失败", e);
             }
         }
 
-        public void disableIcon(String title) {
+        private void disableIcon(String title) {
             getSystemTray().getMenus(title).get(0).setEnabled(false);
         }
 
@@ -244,6 +252,10 @@ public class WinDropApplication {
                 throw new IllegalStateException("尚未初始化完成");
             }
             return systemTray;
+        }
+
+        public static void alert(String msg) {
+            JOptionPane.showConfirmDialog(null,msg,"警告",JOptionPane.DEFAULT_OPTION);
         }
 
         public static boolean confirm(String title, String msg) {
