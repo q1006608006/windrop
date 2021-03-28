@@ -41,14 +41,13 @@ public class QrCodeControllerService {
     }
 
     public String sharedFile(File file, int count, int second) {
-        return register(key -> {
-            String sharedKey = IDUtil.getShortUuid();
-            sharedService.register(sharedKey, file);
-            JSONObject obj = new JSONObject();
-            obj.put("support", "file");
-            obj.put("code", sharedKey);
-            return obj.toJSONString();
-        }, count, second);
+        String sharedKey = IDUtil.getShortUuid();
+        sharedService.register(sharedKey, file, count, second);
+        JSONObject obj = new JSONObject();
+        obj.put("support", "file");
+        obj.put("code", sharedKey);
+        String qrCodeBody = obj.toJSONString();
+        return register(key -> qrCodeBody, count, second);
     }
 
 /*    public String forConnect() {
@@ -64,7 +63,7 @@ public class QrCodeControllerService {
 
     public void register(String key, Supplier<String> supplier, int count, int second) {
         if (count < 1) {
-            count = 1;
+            count = Integer.MAX_VALUE;
         }
         if (second < 1) {
             second = 60;

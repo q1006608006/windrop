@@ -11,6 +11,7 @@ import java.io.File;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -22,7 +23,7 @@ import java.util.function.Supplier;
 @Service
 public class ResourceSharedService {
 
-    private final Map<String, Object> resourceMap;
+    private final Map<String, Supplier<Resource>> resourceMap;
 
     @Autowired
     private ScheduledService scheduled;
@@ -31,36 +32,39 @@ public class ResourceSharedService {
         resourceMap = new ConcurrentHashMap<>();
     }
 
-    public void register(String key, File file) {
-        resourceMap.put(key, ((Supplier<Resource>) () -> new FileSystemResource(file)));
-        scheduleRemove(key);
+    public void register(String key, File file, int sharedCount, int cachedSecond) {
+        register(key, new FileSystemResource(file), sharedCount, cachedSecond);
     }
 
-    public void register(String key, byte[] buff) {
-        resourceMap.put(key, ((Supplier<Resource>) () -> new ByteArrayResource(buff)));
-        scheduleRemove(key);
+    public void register(String key, byte[] buff, int sharedCount, int cachedSecond) {
+        register(key, new ByteArrayResource(buff), sharedCount, cachedSecond);
     }
 
-    public void scheduleRemove(String key) {
+    public void register(String key, Resource resource, int sharedCount, int cachedSecond) {
+        if (sharedCount < 1) {
+            sharedCount = Integer.MAX_VALUE;
+        }
+        AtomicInteger counter = new AtomicInteger(sharedCount);
+        resourceMap.put(key, () -> counter.getAndDecrement() > 0 ? resource : null);
+        scheduleRemove(key, cachedSecond);
+    }
+
+    public void scheduleRemove(String key, int second) {
+        if (second < 0) {
+            second = 60;
+        }
         scheduled.schedule(() -> {
             log.debug("remove cached resource with key '{}'", key);
             resourceMap.remove(key);
-        }, 5, TimeUnit.MINUTES);
+        }, second, TimeUnit.SECONDS);
     }
 
     public Resource findResource(String key) {
-        Object target = resourceMap.get(key);
+        Supplier<Resource> target = resourceMap.get(key);
         if (null == target) {
             return null;
         }
-        Resource resource;
-        if (target instanceof Supplier) {
-            resource = ((Supplier<Resource>) target).get();
-            resourceMap.put(key, resource);
-        } else {
-            resource = (Resource) target;
-        }
-        return resource;
+        return target.get();
     }
 
     public void remove(String key) {
