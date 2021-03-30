@@ -74,6 +74,11 @@ public class PersistUserService {
         saveUserMap();
     }
 
+    public void deleteAll() throws IOException {
+        userMap.clear();
+        saveUserMap();
+    }
+
     private Map<String, AccessUser> takeUserMap() throws IOException {
         if (userMap == null || fileHandler.isUpdate()) {
             synchronized (this) {

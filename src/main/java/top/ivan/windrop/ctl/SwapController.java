@@ -269,8 +269,8 @@ public class SwapController {
                 throw new HttpClientException(HttpStatus.UNAUTHORIZED, "未验证的设备(id: " + id + ")");
             }
             return user;
-        } catch (Exception e) {
-            log.error("获取用户失败", e);
+        } catch (IOException e) {
+            log.error("加载用户数据失败", e);
             throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常");
         }
     }

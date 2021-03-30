@@ -10,6 +10,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Hooks;
 import top.ivan.windrop.bean.WindropConfig;
+import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.QrCodeControllerService;
 import top.ivan.windrop.tray.WindropSystemTray;
 
@@ -42,12 +43,15 @@ public class WinDropApplication {
         public static final String ICON_STOP = "关闭";
         public static final String ICON_RESTART = "重启";
 
-        public static final String ICON_MENU_OPEN = "打开";
         public static final String ICON_SHOW_CODE = "连接码";
-
+        public static final String ICON_MENU_CONFIG = "配置";
+        public static final String ICON_SHOW_CONFIG = "打开配置文件";
         public static final String ICON_SHOW_ACCESSIBLE = "白名单";
-        public static final String ICON_SHOW_CONFIG = "配置";
+        public static final String ICON_REMOVE_DEVICES = "重置认证设备";
+
         public static final String ICON_SHOW_LOG = "查看日志";
+
+        public static final String ICON_SHARE_FILE = "共享文件";
 
         public static final String ICON_SHUTDOWN = "退出";
 
@@ -55,8 +59,13 @@ public class WinDropApplication {
         private final String[] args;
         private final SpringApplication application;
         private ConfigurableApplicationContext context;
+
+        /*
+         * spring components
+         * */
         private WindropConfig config;
         private QrCodeControllerService qrCodeService;
+        private PersistUserService userService;
 
         private static Image iconImage;
         private static WindropSystemTray systemTray;
@@ -79,10 +88,15 @@ public class WinDropApplication {
             disableIcon(ICON_START);
             this.context = application.run(args);
             enableIcon(ICON_STOP);
-            this.config = this.context.getBean(WindropConfig.class);
-            this.qrCodeService = this.context.getBean(QrCodeControllerService.class);
+            autoWired();
             log.info("服务启动成功");
             return context;
+        }
+
+        private void autoWired() {
+            this.config = this.context.getBean(WindropConfig.class);
+            this.qrCodeService = this.context.getBean(QrCodeControllerService.class);
+            this.userService = this.context.getBean(PersistUserService.class);
         }
 
         public void stop() {
@@ -203,6 +217,15 @@ public class WinDropApplication {
             }
         }
 
+        private void clearDevice() {
+            try {
+                userService.deleteAll();
+            } catch (IOException e) {
+                alert("重置认证设备");
+                log.error("重置认证设备", e);
+            }
+        }
+
         private void disableIcon(String title) {
             getSystemTray().getMenus(title).get(0).setEnabled(false);
         }
@@ -219,12 +242,12 @@ public class WinDropApplication {
                     .addLabel(ICON_RESTART, (m, t) -> restart())
                     .addSeparator()
                     .addLabel(ICON_SHOW_CODE, (m, t) -> showCode())
-//                    .addSecondLabel(ICON_MENU_OPEN, ICON_SHOW_CODE, (m, t) -> showCode())
-                    .addLabel(ICON_SHOW_CONFIG, (m, t) -> showConfig())
-                    .addLabel(ICON_SHOW_ACCESSIBLE, (m, t) -> showAccessible())
+                    .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_CONFIG, (m, t) -> showConfig())
+                    .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_ACCESSIBLE, (m, t) -> showAccessible())
+                    .addSecondLabel(ICON_MENU_CONFIG, ICON_REMOVE_DEVICES, (m, t) -> clearDevice())
                     .addLabel(ICON_SHOW_LOG, (m, t) -> showLog())
                     .addSeparator()
-                    .addLabel("选择文件", (m, t) -> prepareDownload())
+                    .addLabel(ICON_SHARE_FILE, (m, t) -> prepareDownload())
                     .addSeparator()
                     .addLabel(ICON_SHUTDOWN, (m, t) -> exit());
 
@@ -255,7 +278,7 @@ public class WinDropApplication {
         }
 
         public static void alert(String msg) {
-            JOptionPane.showConfirmDialog(null,msg,"警告",JOptionPane.DEFAULT_OPTION);
+            JOptionPane.showConfirmDialog(null, msg, "警告", JOptionPane.DEFAULT_OPTION);
         }
 
         public static boolean confirm(String title, String msg) {
