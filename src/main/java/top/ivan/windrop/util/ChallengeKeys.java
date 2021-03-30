@@ -37,10 +37,6 @@ public class ChallengeKeys {
         }
         try {
             task.lock();
-            ChallengeTask curTask = keyMap.get(key);
-            if (curTask != task) {
-                return State.TIMEOUT;
-            }
             return task.challenge(key);
         } finally {
             task.unlock();

@@ -35,6 +35,7 @@ build/
 ### default mvn file ###
 /mvnw.cmd
 /mvnw
+/.mvn
 
 ### personal-config ###
 conf/

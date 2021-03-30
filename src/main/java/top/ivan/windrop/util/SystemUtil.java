@@ -5,11 +5,12 @@ import org.springframework.util.StringUtils;
 
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class SystemUtil {
     private static String PC_NAME;
     private static String PC_MAC;
+    private static List<String> localIpList;
 
     public static String getPCName() {
         if (StringUtils.isEmpty(PC_NAME)) {
@@ -57,4 +59,31 @@ public class SystemUtil {
         return PC_MAC;
     }
 
+    public static List<String> getLocalIPList() {
+        if (localIpList == null) {
+            List<String> ipList = new ArrayList<>();
+            try {
+                Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+                NetworkInterface networkInterface;
+                Enumeration<InetAddress> inetAddresses;
+                InetAddress inetAddress;
+                String ip;
+                while (networkInterfaces.hasMoreElements()) {
+                    networkInterface = networkInterfaces.nextElement();
+                    inetAddresses = networkInterface.getInetAddresses();
+                    while (inetAddresses.hasMoreElements()) {
+                        inetAddress = inetAddresses.nextElement();
+                        if (inetAddress instanceof Inet4Address) { // IPV4
+                            ip = inetAddress.getHostAddress();
+                            ipList.add(ip);
+                        }
+                    }
+                }
+            } catch (SocketException e) {
+                throw new RuntimeException(e);
+            }
+            localIpList = ipList;
+        }
+        return localIpList;
+    }
 }

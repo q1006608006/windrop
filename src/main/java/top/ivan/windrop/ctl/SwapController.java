@@ -1,11 +1,13 @@
 package top.ivan.windrop.ctl;
 
+import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,13 +22,18 @@ import top.ivan.windrop.clip.*;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.ex.LengthTooLargeException;
-import top.ivan.windrop.svc.*;
+import top.ivan.windrop.svc.IPVerifier;
+import top.ivan.windrop.svc.PersistUserService;
+import top.ivan.windrop.svc.ResourceSharedService;
+import top.ivan.windrop.svc.ValidKeyService;
 import top.ivan.windrop.util.ClipUtil;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
+import top.ivan.windrop.util.RandomAccessKey;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -42,6 +49,7 @@ import java.util.Objects;
 @RequestMapping("/windrop")
 public class SwapController {
     private static final File TEMP_DIRECTORY_FILE;
+    public static final String ACCESS_GROUP = "SWAP";
 
     static {
         File tempDir = new File("temp");
@@ -56,13 +64,13 @@ public class SwapController {
     @Autowired
     private WindropConfig config;
     @Autowired
-    private IPVerifier ipVerifier;
-    @Autowired
     private PersistUserService userService;
     @Autowired
     private ResourceSharedService sharedService;
     @Autowired
-    private ApplyControllerService applyService;
+    private IPVerifier ipVerifier;
+
+    private final RandomAccessKey randomAccessKey = new RandomAccessKey(30);
 
     @Scheduled(cron = "* 0/15 * * * ?")
     public void cleanTempFile() throws IOException {
@@ -77,6 +85,23 @@ public class SwapController {
                 file.delete();
             }
         }
+    }
+
+    @PostMapping("apply")
+    public ResponseEntity<?> apply(@RequestBody ApplyRequest request, ServerWebExchange exchange) {
+        InetSocketAddress address = exchange.getRequest().getRemoteAddress();
+        log.debug("receive apply request from '{}'", exchange.getRequest().getRemoteAddress());
+
+        String ip = address.getAddress().getHostAddress();
+        if (!ipVerifier.accessible(ip)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApplyResponse.failed("无权限访问"));
+        }
+        if (!confirm(ip, request)) {
+            return ResponseEntity.ok().body(ApplyResponse.failed("请求已被取消"));
+        }
+        String accessKey = randomAccessKey.getAccessKey();
+        log.debug("apply for accessKey: {}", accessKey);
+        return ResponseEntity.ok(ApplyResponse.success(accessKey));
     }
 
     @PostMapping("push")
@@ -242,22 +267,16 @@ public class SwapController {
         return file;
     }
 
-    private void systemNotify(String type, String msg, boolean push) {
-        if (config.needNotify(type, push)) {
-            WinDropApplication.WindropHandler.getSystemTray().showNotification(msg);
-        }
-    }
-
     private void validPullRequest(WindropRequest request) {
         AccessUser user = prepareUser(request.getId());
-        if (!applyService.match(key -> Objects.equals(DigestUtils.sha256Hex(key + ";" + user.getValidKey()), request.getSign()))) {
+        if (!randomAccessKey.match(key -> Objects.equals(DigestUtils.sha256Hex(key + ";" + user.getValidKey()), request.getSign()), true)) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "权限校验失败");
         }
     }
 
     private void validPushRequest(WindropRequest request, byte[] data) {
         AccessUser user = prepareUser(request.getId());
-        if (!applyService.match(key -> Objects.equals(DigestUtils.sha256Hex(DigestUtils.sha256Hex(data) + ";" + key + ";" + user.getValidKey()), request.getSign()))) {
+        if (!randomAccessKey.match(key -> Objects.equals(DigestUtils.sha256Hex(DigestUtils.sha256Hex(data) + ";" + key + ";" + user.getValidKey()), request.getSign()), true)) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "权限校验失败");
         }
     }
@@ -273,6 +292,37 @@ public class SwapController {
             log.error("加载用户数据失败", e);
             throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常");
         }
+    }
+
+    private void systemNotify(String type, String msg, boolean push) {
+        if (config.needNotify(type, push)) {
+            WinDropApplication.WindropHandler.getSystemTray().showNotification(msg);
+        }
+    }
+
+    private boolean confirm(String ip, ApplyRequest request) {
+        String type = request.getType();
+        ClipBean bean = ClipUtil.getClipBean();
+        if (config.needConfirm(ClipUtil.getClipBeanType(bean), !type.equalsIgnoreCase("pull"))) {
+            String msg;
+            switch (type) {
+                case "pull":
+                    msg = "推送'" + ClipUtil.getClipBeanTypeName(bean) + "'到设备?";
+                    break;
+                case "file":
+                case "image":
+                    msg = "是否接收文件/图片: " + request.getFilename() + "（" + request.getSize() + ")?";
+                    break;
+                case "text":
+                    msg = "是否接收文本?";
+                    break;
+                default:
+                    msg = "未定义请求: " + JSON.toJSONString(request);
+                    break;
+            }
+            return WinDropApplication.WindropHandler.confirm("来自" + ip, msg);
+        }
+        return true;
     }
 
     private static String formatName(String src) {

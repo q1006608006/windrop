@@ -19,13 +19,12 @@ import top.ivan.windrop.svc.ValidKeyService;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
 import top.ivan.windrop.util.RandomAccessKey;
+import top.ivan.windrop.util.SystemUtil;
 
 import java.io.IOException;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author Ivan
@@ -43,8 +42,6 @@ public class ConnectController {
     static final int HEIGHT = 300;
     // 二维码的格式
     static final String FORMAT = "png";
-
-    static List<String> localIpList;
 
     @Autowired
     private WindropConfig config;
@@ -98,39 +95,11 @@ public class ConnectController {
 
     private byte[] getCodeBytes() throws IOException, WriterException {
         JSONObject data = new JSONObject();
-        data.put("ipList", getLocalIPList());
+        data.put("ipList", SystemUtil.getLocalIPList());
         data.put("token", tokenKey.getAccessKey());
         data.put("validKey", ConvertUtil.encrypt(keyService.getValidKey(), config.getPassword()));
         data.put("port", config.getPort());
         return ConvertUtil.getQrCodeImageBytes(data.toJSONString(), WIDTH, HEIGHT, FORMAT);
-    }
-
-    public static List<String> getLocalIPList() {
-        if (localIpList == null) {
-            List<String> ipList = new ArrayList<>();
-            try {
-                Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-                NetworkInterface networkInterface;
-                Enumeration<InetAddress> inetAddresses;
-                InetAddress inetAddress;
-                String ip;
-                while (networkInterfaces.hasMoreElements()) {
-                    networkInterface = networkInterfaces.nextElement();
-                    inetAddresses = networkInterface.getInetAddresses();
-                    while (inetAddresses.hasMoreElements()) {
-                        inetAddress = inetAddresses.nextElement();
-                        if (inetAddress instanceof Inet4Address) { // IPV4
-                            ip = inetAddress.getHostAddress();
-                            ipList.add(ip);
-                        }
-                    }
-                }
-            } catch (SocketException e) {
-                throw new RuntimeException(e);
-            }
-            localIpList = ipList;
-        }
-        return localIpList;
     }
 
     private ResponseEntity<Map<String, Object>> failure(HttpStatus status, String msg) {
