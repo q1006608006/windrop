@@ -33,19 +33,23 @@ public class ResourceSharedService {
     }
 
     public void register(String key, File file, int sharedCount, int cachedSecond) {
-        register(key, new FileSystemResource(file), sharedCount, cachedSecond);
+        register(key, () -> new FileSystemResource(file), sharedCount, cachedSecond);
     }
 
     public void register(String key, byte[] buff, int sharedCount, int cachedSecond) {
-        register(key, new ByteArrayResource(buff), sharedCount, cachedSecond);
+        register(key, () -> new ByteArrayResource(buff), sharedCount, cachedSecond);
     }
 
     public void register(String key, Resource resource, int sharedCount, int cachedSecond) {
+        register(key, () -> resource, sharedCount, cachedSecond);
+    }
+
+    public void register(String key, Supplier<Resource> supplier, int sharedCount, int cachedSecond) {
         if (sharedCount < 1) {
             sharedCount = Integer.MAX_VALUE;
         }
         AtomicInteger counter = new AtomicInteger(sharedCount);
-        resourceMap.put(key, () -> counter.getAndDecrement() > 0 ? resource : null);
+        resourceMap.put(key, () -> counter.getAndDecrement() > 0 ? supplier.get() : null);
         scheduleRemove(key, cachedSecond);
     }
 

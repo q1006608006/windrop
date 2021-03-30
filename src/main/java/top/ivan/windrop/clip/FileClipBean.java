@@ -11,7 +11,7 @@ import java.util.Collections;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-public class FileClipBean implements ClipBean {
+public class FileClipBean implements ClipBean, FileBean {
     private byte[] data;
     private final File src;
     private final long updateTime;
@@ -60,7 +60,6 @@ public class FileClipBean implements ClipBean {
         }
     }
 
-
     private static void nioZip(ZipOutputStream out, File f, String base)
             throws IOException { // 方法重载
         WritableByteChannel outChannel = Channels.newChannel(out);
@@ -105,10 +104,12 @@ public class FileClipBean implements ClipBean {
         return src.equals(target);
     }
 
+    @Override
     public String getFileName() {
         return src.getName();
     }
 
+    @Override
     public File getFile() {
         return src;
     }

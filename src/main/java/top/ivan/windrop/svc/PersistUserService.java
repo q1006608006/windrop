@@ -15,10 +15,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -89,7 +87,7 @@ public class PersistUserService {
                     } catch (Exception e) {
                         log.error("", e);
                         log.error("尝试解密文件失败，可能的情况为该应用是由其他机器移植而来！");
-                        userMap = Collections.emptyMap();
+                        userMap = new ConcurrentHashMap<>();
                         saveUserMap();
                         return userMap;
                     }

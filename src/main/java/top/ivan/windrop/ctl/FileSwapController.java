@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,7 +33,7 @@ public class FileSwapController {
     public Mono<Resource> download(@PathVariable String key, ServerHttpResponse response) {
         Resource res = resourceSharedService.findResource(key);
         if (null == res) {
-            return Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "forbidden"));
+            return Mono.error(new HttpClientException(HttpStatus.NOT_FOUND, "not found"));
         }
 
         return Mono.just(res).doFirst(() -> {
@@ -46,5 +47,10 @@ public class FileSwapController {
                 response.getHeaders().set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + file.getName());
             }
         });
+    }
+
+    @GetMapping("/ss")
+    public Mono<ResponseEntity<?>> ss() {
+        return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("请先认证"));
     }
 }

@@ -11,7 +11,7 @@ import java.nio.file.Paths;
  * @description
  * @date 2021/2/2
  */
-public class ImageFileClipBean extends ImageClipBean {
+public class ImageFileClipBean extends ImageClipBean implements FileBean {
 
     private byte[] data;
     private final File file;
@@ -43,5 +43,15 @@ public class ImageFileClipBean extends ImageClipBean {
     @Override
     public boolean isOrigin(Object target) throws IOException {
         return file.equals(target);
+    }
+
+    @Override
+    public File getFile() {
+        return file;
+    }
+
+    @Override
+    public String getFileName() {
+        return file.getName();
     }
 }

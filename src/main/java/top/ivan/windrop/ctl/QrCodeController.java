@@ -47,13 +47,13 @@ public class QrCodeController {
                 response.getHeaders().setContentType(MediaType.IMAGE_PNG);
                 return ConvertUtil.getQrCodeImageBytes(data, WIDTH, HEIGHT, FORMAT);
             } catch (WriterException | IOException e) {
-                throw new HttpClientException(HttpStatus.INTERNAL_SERVER_ERROR, "生成二维码失败");
+                throw new HttpClientException(HttpStatus.INTERNAL_SERVER_ERROR, "二维码生成失败");
             } catch (CacheNotFoundException e) {
-                throw new HttpClientException(HttpStatus.NOT_FOUND, "未找到资源");
+                throw new HttpClientException(HttpStatus.NOT_FOUND, "未知来源的请求");
             } catch (CacheNotAccessException e) {
-                throw new HttpClientException(HttpStatus.OK, "资源访问超过上限");
+                throw new HttpClientException(HttpStatus.OK, "二维码使用次数超过上限");
             } catch (CacheTimeoutException e) {
-                throw new HttpClientException(HttpStatus.REQUEST_TIMEOUT, "资源已失效");
+                throw new HttpClientException(HttpStatus.REQUEST_TIMEOUT, "二维码已失效");
             }
         });
 /*        try {

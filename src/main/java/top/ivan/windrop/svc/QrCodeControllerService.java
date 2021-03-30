@@ -50,17 +50,6 @@ public class QrCodeControllerService {
         return register(key -> qrCodeBody, count, second);
     }
 
-/*    public String forConnect() {
-        return register(key -> {
-            String sharedKey = IDUtil.getShortUuid();
-            sharedService.register(sharedKey, file);
-            JSONObject obj = new JSONObject();
-            obj.put("support", "file");
-            obj.put("code", sharedKey);
-            return obj.toJSONString();
-        }, 1, 30);
-    }*/
-
     public void register(String key, Supplier<String> supplier, int count, int second) {
         if (count < 1) {
             count = Integer.MAX_VALUE;

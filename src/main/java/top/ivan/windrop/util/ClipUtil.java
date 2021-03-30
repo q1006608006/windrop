@@ -1,12 +1,9 @@
-package top.ivan.windrop.svc;
+package top.ivan.windrop.util;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import top.ivan.windrop.clip.*;
 
-import javax.annotation.PostConstruct;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
@@ -22,20 +19,14 @@ import java.util.List;
  * @description
  * @date 2020/12/14
  */
-@Slf4j
-@Service
-public class ClipSvc {
+public class ClipUtil {
     private final static String DEFAULT_IMAGE_FORMAT = "png";
 
-    private Clipboard clipboard;
-    private volatile ClipBean target;
+    private static Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 
-    @PostConstruct
-    public void init() {
-        clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-    }
+    private static volatile ClipBean target;
 
-    public synchronized ClipBean getClipBean() {
+    public static synchronized ClipBean getClipBean() {
         try {
             Transferable ts = clipboard.getContents(null);
             Object origin;
@@ -64,17 +55,17 @@ public class ClipSvc {
                 }
             }
         } catch (Exception e) {
-            log.error("there was an error while copying to the Clipboard", e);
+            throw new RuntimeException("can not get clipboard data", e);
         }
         return target;
     }
 
-    public synchronized void setClipboard(ClipBean bean) throws IOException {
-        this.target = bean;
+    public static synchronized void setClipboard(ClipBean bean) throws IOException {
+        target = bean;
         clipboard.setContents(bean.toTransferable(), null);
     }
 
-    public boolean isOrigin(Object obj) throws IOException {
+    public static boolean isOrigin(Object obj) throws IOException {
         if (target != null) {
             return target.isOrigin(obj);
         }
@@ -94,7 +85,7 @@ public class ClipSvc {
         return DEFAULT_IMAGE_FORMAT;
     }
 
-    private ImageData getImageData(Transferable ts) throws IOException, UnsupportedFlavorException {
+    private static ImageData getImageData(Transferable ts) throws IOException, UnsupportedFlavorException {
         String suffix = DEFAULT_IMAGE_FORMAT;
         Object origin;
         if (ts.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
@@ -134,4 +125,26 @@ public class ClipSvc {
         return System.currentTimeMillis() / 1000;
     }
 
+    public static String getClipBeanTypeName(ClipBean clipBean) {
+        switch (getClipBeanType(clipBean)) {
+            case "file":
+                return "文件";
+            case "image":
+                return "图片";
+            case "text":
+                return "文本";
+        }
+        return "未知类型";
+    }
+
+    public static String getClipBeanType(ClipBean clipBean) {
+        if (clipBean instanceof FileClipBean) {
+            return "file";
+        } else if (clipBean instanceof ImageClipBean) {
+            return "image";
+        } else if (clipBean instanceof TextClipBean) {
+            return "text";
+        }
+        return "unknown";
+    }
 }

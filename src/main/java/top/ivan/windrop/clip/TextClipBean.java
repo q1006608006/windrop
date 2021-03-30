@@ -4,6 +4,7 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 public class TextClipBean implements ClipBean {
     private final String text;
@@ -17,7 +18,7 @@ public class TextClipBean implements ClipBean {
 
     @Override
     public byte[] getBytes() {
-        return text.getBytes();
+        return getBytes(StandardCharsets.UTF_8);
     }
 
     public byte[] getBytes(Charset charset) {

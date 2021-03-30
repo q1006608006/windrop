@@ -1,17 +1,17 @@
 package top.ivan.windrop.bean;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * @author Ivan
  * @description
  * @date 2021/1/14
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
-public class ApplyResponse {
+public class ApplyResponse extends CommonResponse{
     private String accessKey;
-    private boolean success;
-    private String message;
 
     public static ApplyResponse success(String key) {
         ApplyResponse response = new ApplyResponse();
