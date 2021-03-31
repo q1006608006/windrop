@@ -29,10 +29,4 @@ public class IDUtil {
         return UUID.randomUUID().toString().trim().replaceAll("-", "");
     }
 
-    public static void main(String[] args) {
-        for (int i = 0; i < 100; i++) {
-//            System.out.println(getShortUuid());
-            System.out.println(get32UUID());
-        }
-    }
 }

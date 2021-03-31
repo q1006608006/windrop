@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.WinDropApplication;
+import top.ivan.windrop.WinDropConfiguration;
 import top.ivan.windrop.bean.*;
 import top.ivan.windrop.clip.*;
 import top.ivan.windrop.ex.HttpClientException;
@@ -24,12 +25,11 @@ import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.ex.LengthTooLargeException;
 import top.ivan.windrop.svc.IPVerifier;
 import top.ivan.windrop.svc.PersistUserService;
+import top.ivan.windrop.svc.RandomAccessKeyService;
 import top.ivan.windrop.svc.ResourceSharedService;
-import top.ivan.windrop.svc.ValidKeyService;
 import top.ivan.windrop.util.ClipUtil;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
-import top.ivan.windrop.util.RandomAccessKey;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,7 +49,6 @@ import java.util.Objects;
 @RequestMapping("/windrop")
 public class SwapController {
     private static final File TEMP_DIRECTORY_FILE;
-    public static final String ACCESS_GROUP = "SWAP";
 
     static {
         File tempDir = new File("temp");
@@ -60,8 +59,6 @@ public class SwapController {
     }
 
     @Autowired
-    private ValidKeyService validKeyService;
-    @Autowired
     private WindropConfig config;
     @Autowired
     private PersistUserService userService;
@@ -69,8 +66,8 @@ public class SwapController {
     private ResourceSharedService sharedService;
     @Autowired
     private IPVerifier ipVerifier;
-
-    private final RandomAccessKey randomAccessKey = new RandomAccessKey(30);
+    @Autowired
+    private RandomAccessKeyService keyService;
 
     @Scheduled(cron = "* 0/15 * * * ?")
     public void cleanTempFile() throws IOException {
@@ -99,7 +96,7 @@ public class SwapController {
         if (!confirm(ip, request)) {
             return ResponseEntity.ok().body(ApplyResponse.failed("请求已被取消"));
         }
-        String accessKey = randomAccessKey.getAccessKey();
+        String accessKey = keyService.getKey(WinDropConfiguration.SWAP_GROUP);
         log.debug("apply for accessKey: {}", accessKey);
         return ResponseEntity.ok(ApplyResponse.success(accessKey));
     }
@@ -157,6 +154,8 @@ public class SwapController {
     public Mono<WindropResponse> getClipboard(@RequestBody WindropRequest request, ServerWebExchange exchange) {
         log.info("receive pull request from '{}'", exchange.getRequest().getRemoteAddress());
 
+        AccessUser user = prepareUser(request.getId());
+
         return Mono.fromSupplier(() -> {
             ClipBean clipBean = ClipUtil.getClipBean();
             String type = ClipUtil.getClipBeanType(clipBean);
@@ -196,7 +195,7 @@ public class SwapController {
             response.setFileName(fileName);
             response.setServerUpdateTime(clipBean.getUpdateTime());
             String dataSha = DigestUtils.sha256Hex(data);
-            String sign = DigestUtils.sha256Hex(dataSha + ";" + validKeyService.getValidKey());
+            String sign = DigestUtils.sha256Hex(dataSha + ";" + user.getValidKey());
             response.setSign(sign);
 
             systemNotify(type, msg, false);
@@ -205,7 +204,6 @@ public class SwapController {
             String resourceId = IDUtil.getShortUuid();
             log.info("data is too large, shared with resourceId: {}", resourceId);
 
-            AccessUser user = prepareUser(request.getId());
             ClipBean clipBean = e.getClipBean();
             File file = null;
             if (clipBean instanceof FileBean) {
@@ -269,14 +267,14 @@ public class SwapController {
 
     private void validPullRequest(WindropRequest request) {
         AccessUser user = prepareUser(request.getId());
-        if (!randomAccessKey.match(key -> Objects.equals(DigestUtils.sha256Hex(key + ";" + user.getValidKey()), request.getSign()), true)) {
+        if (!keyService.match(WinDropConfiguration.SWAP_GROUP, key -> Objects.equals(DigestUtils.sha256Hex(key + ";" + user.getValidKey()), request.getSign()))) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "权限校验失败");
         }
     }
 
     private void validPushRequest(WindropRequest request, byte[] data) {
         AccessUser user = prepareUser(request.getId());
-        if (!randomAccessKey.match(key -> Objects.equals(DigestUtils.sha256Hex(DigestUtils.sha256Hex(data) + ";" + key + ";" + user.getValidKey()), request.getSign()), true)) {
+        if (!keyService.match(WinDropConfiguration.SWAP_GROUP, key -> Objects.equals(DigestUtils.sha256Hex(DigestUtils.sha256Hex(data) + ";" + key + ";" + user.getValidKey()), request.getSign()))) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "权限校验失败");
         }
     }

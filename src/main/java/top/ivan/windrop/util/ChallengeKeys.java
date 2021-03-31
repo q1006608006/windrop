@@ -18,13 +18,13 @@ public class ChallengeKeys {
         keyMap = new QueuedConcurrentMap<>(maxSize, (k, task) -> task.isTimeout());
     }
 
-    public ChallengeTask registerKey(String key, long intervalMillions, @NonNull Predicate<String> test) {
+    public ChallengeTask registerKey(String key, long intervalMillions, @NonNull Predicate<ChallengeTask> test) {
         ChallengeTask task = new ChallengeTask(intervalMillions, test);
         keyMap.put(key, task);
         return task;
     }
 
-    public ChallengeTask registerIfAbsent(String key, long intervalMillions, @NonNull Predicate<String> test) {
+    public ChallengeTask registerIfAbsent(String key, long intervalMillions, @NonNull Predicate<ChallengeTask> test) {
         ChallengeTask task = new ChallengeTask(intervalMillions, test);
         keyMap.computeIfAbsent(key, k -> new ChallengeTask(intervalMillions, test));
         return task;
@@ -35,12 +35,7 @@ public class ChallengeKeys {
         if (null == task) {
             return State.NONE;
         }
-        try {
-            task.lock();
-            return task.challenge(key);
-        } finally {
-            task.unlock();
-        }
+        return task.challenge();
     }
 
     public ChallengeTask remove(String key) {
@@ -58,9 +53,9 @@ public class ChallengeKeys {
     public static class ChallengeTask extends ReentrantLock {
 
         private final long expireMillions;
-        private final Predicate<String> keyAction;
+        private final Predicate<ChallengeTask> keyAction;
 
-        public ChallengeTask(long intervalMillions, Predicate<String> keyAction) {
+        public ChallengeTask(long intervalMillions, Predicate<ChallengeTask> keyAction) {
             expireMillions = System.currentTimeMillis() + intervalMillions;
             this.keyAction = keyAction == null ? s -> true : keyAction;
         }
@@ -69,11 +64,11 @@ public class ChallengeKeys {
             return System.currentTimeMillis() > expireMillions;
         }
 
-        State challenge(String key) {
+        private State challenge() {
             if (isTimeout()) {
                 return State.TIMEOUT;
             }
-            return keyAction.test(key) ? State.SUCCESS : State.FAILED;
+            return keyAction.test(this) ? State.SUCCESS : State.FAILED;
         }
     }
 

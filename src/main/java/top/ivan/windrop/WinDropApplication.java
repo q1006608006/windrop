@@ -2,14 +2,17 @@ package top.ivan.windrop;
 
 import com.sun.java.swing.plaf.windows.WindowsLookAndFeel;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Hooks;
 import top.ivan.windrop.bean.WindropConfig;
+import top.ivan.windrop.svc.LocalConnectHandler;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.QrCodeControllerService;
 import top.ivan.windrop.tray.WindropSystemTray;
@@ -60,16 +63,27 @@ public class WinDropApplication {
         private final SpringApplication application;
         private ConfigurableApplicationContext context;
 
-        /*
-         * spring components
-         * */
-        private WindropConfig config;
-        private QrCodeControllerService qrCodeService;
-        private PersistUserService userService;
-
         private static Image iconImage;
         private static WindropSystemTray systemTray;
         private static Frame unVisibleFrame;
+
+        /*
+         * spring components
+         * */
+        private AppBeanHandler beanHandler;
+
+        @Component
+        public static class AppBeanHandler {
+
+            @Autowired
+            private WindropConfig config;
+            @Autowired
+            private QrCodeControllerService qrCodeService;
+            @Autowired
+            private PersistUserService userService;
+            @Autowired
+            private LocalConnectHandler connectHandler;
+        }
 
         public WindropHandler(String[] args, SpringApplication application) {
             this.args = args;
@@ -94,9 +108,7 @@ public class WinDropApplication {
         }
 
         private void autoWired() {
-            this.config = this.context.getBean(WindropConfig.class);
-            this.qrCodeService = this.context.getBean(QrCodeControllerService.class);
-            this.userService = this.context.getBean(PersistUserService.class);
+            this.beanHandler = this.context.getBean(AppBeanHandler.class);
         }
 
         public void stop() {
@@ -126,12 +138,13 @@ public class WinDropApplication {
         }
 
         private String getURLPrefix() {
-            return "http://localhost:" + config.getPort();
+            return "http://localhost:" + beanHandler.config.getPort();
         }
 
-        private void showCode() {
+        private void showConnectCode() {
             try {
-                Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/auth/connect_code"));
+                String key = beanHandler.connectHandler.newConnect();
+                Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/code/" + key));
             } catch (Exception e) {
                 alert("无法打开网页");
                 log.error("打开网页失败", e);
@@ -208,7 +221,7 @@ public class WinDropApplication {
             } else {
                 return;
             }
-            String qrKey = this.qrCodeService.sharedFile(selectorFile, 5, 300);
+            String qrKey = beanHandler.qrCodeService.sharedFile(selectorFile, 5, 300);
             try {
                 Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/code/" + qrKey));
             } catch (URISyntaxException | IOException e) {
@@ -219,7 +232,7 @@ public class WinDropApplication {
 
         private void clearDevice() {
             try {
-                userService.deleteAll();
+                beanHandler.userService.deleteAll();
             } catch (IOException e) {
                 alert("重置认证设备");
                 log.error("重置认证设备", e);
@@ -241,7 +254,7 @@ public class WinDropApplication {
                     .addLabel(ICON_STOP, (m, t) -> stop())
                     .addLabel(ICON_RESTART, (m, t) -> restart())
                     .addSeparator()
-                    .addLabel(ICON_SHOW_CODE, (m, t) -> showCode())
+                    .addLabel(ICON_SHOW_CODE, (m, t) -> showConnectCode())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_CONFIG, (m, t) -> showConfig())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_ACCESSIBLE, (m, t) -> showAccessible())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_REMOVE_DEVICES, (m, t) -> clearDevice())
