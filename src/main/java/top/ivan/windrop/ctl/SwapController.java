@@ -305,7 +305,13 @@ public class SwapController {
             String msg;
             switch (type) {
                 case "pull":
-                    msg = "推送'" + ClipUtil.getClipBeanTypeName(bean) + "'到设备?";
+                    String itemName;
+                    if (bean instanceof FileBean) {
+                        itemName = ((FileBean) bean).getFileName();
+                    } else {
+                        itemName = ClipUtil.getClipBeanTypeName(bean);
+                    }
+                    msg = "是否推送'" + itemName + "'到设备?";
                     break;
                 case "file":
                 case "image":
