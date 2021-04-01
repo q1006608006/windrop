@@ -15,7 +15,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -118,7 +120,7 @@ public class PersistUserService {
 
     private static String getSystemKey() {
         if (StringUtils.isEmpty(SYSTEM_KEY)) {
-            String keyStr = SystemUtil.getPCName() + ";" + SystemUtil.getPCMac();
+            String keyStr = String.join(";", SystemUtil.getPCName(), SystemUtil.getMotherboardSN(), SystemUtil.getCpuSN());
             SYSTEM_KEY = DigestUtils.md5Hex(keyStr);
         }
         return SYSTEM_KEY;

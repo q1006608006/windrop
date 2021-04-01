@@ -17,14 +17,19 @@ import java.util.List;
 public class IPVerifier {
 
     private volatile List<String> accessList;
-    private WatchedFile watchedFile;
+    private final WatchedFile watchedFile;
 
     public IPVerifier(String ipListPath) {
         watchedFile = new WatchedFile(ipListPath);
         log.debug("加载白名单文件: '{}'", watchedFile.getFile().getAbsolutePath());
+        init();
     }
 
     private void init() {
+        if (!watchedFile.isExist()) {
+            accessList = null;
+            return;
+        }
         try {
             List<String> lines = Files.readAllLines(watchedFile.getPath());
             List<String> newAccessList = new ArrayList<>();

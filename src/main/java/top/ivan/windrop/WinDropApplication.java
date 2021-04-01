@@ -143,7 +143,7 @@ public class WinDropApplication {
 
         private void showConnectCode() {
             try {
-                String key = beanHandler.connectHandler.newConnect();
+                String key = beanHandler.connectHandler.newConnect(-1);
                 Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/code/" + key));
             } catch (Exception e) {
                 alert("无法打开网页");

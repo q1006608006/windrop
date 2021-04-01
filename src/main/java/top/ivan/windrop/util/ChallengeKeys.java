@@ -56,7 +56,11 @@ public class ChallengeKeys {
         private final Predicate<ChallengeTask> keyAction;
 
         public ChallengeTask(long intervalMillions, Predicate<ChallengeTask> keyAction) {
-            expireMillions = System.currentTimeMillis() + intervalMillions;
+            if (intervalMillions > 0) {
+                expireMillions = System.currentTimeMillis() + intervalMillions;
+            } else {
+                expireMillions = Long.MAX_VALUE;
+            }
             this.keyAction = keyAction == null ? s -> true : keyAction;
         }
 

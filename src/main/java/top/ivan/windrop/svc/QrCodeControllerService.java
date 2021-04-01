@@ -1,6 +1,7 @@
 package top.ivan.windrop.svc;
 
 import com.alibaba.fastjson.JSONObject;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import top.ivan.windrop.ex.CacheNotAccessException;
@@ -10,6 +11,7 @@ import top.ivan.windrop.util.ChallengeKeys;
 import top.ivan.windrop.util.IDUtil;
 
 import java.io.File;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,6 +23,7 @@ import java.util.function.Supplier;
  * @description
  * @date 2021/3/26
  */
+@Slf4j
 @Service
 public class QrCodeControllerService {
 
@@ -38,16 +41,6 @@ public class QrCodeControllerService {
         String key = IDUtil.getShortUuid();
         register(key, () -> supplier.apply(key), count, second);
         return key;
-    }
-
-    public String sharedFile(File file, int count, int second) {
-        String sharedKey = IDUtil.getShortUuid();
-        sharedService.register(sharedKey, file, count, second);
-        JSONObject obj = new JSONObject();
-        obj.put("support", "file");
-        obj.put("code", sharedKey);
-        String qrCodeBody = obj.toJSONString();
-        return register(key -> qrCodeBody, count, second);
     }
 
     public void register(String key, Supplier<String> supplier, int count, int second) {
@@ -68,6 +61,17 @@ public class QrCodeControllerService {
         }, second, TimeUnit.SECONDS);
     }
 
+    public String sharedFile(File file, int count, int second) {
+        String sharedKey = IDUtil.getShortUuid();
+        sharedService.register(sharedKey, file, count, second);
+        JSONObject obj = new JSONObject();
+        obj.put("support", "file");
+        obj.put("code", sharedKey);
+        String qrCodeBody = obj.toJSONString();
+        log.info("share file[{}] with key '{}'", file.getName(), sharedKey);
+        return register(key -> qrCodeBody, count, second);
+    }
+
     public String getData(String key) throws CacheNotFoundException, CacheNotAccessException, CacheTimeoutException {
         switch (challengeKeys.challenge(key)) {
             case NONE:
@@ -77,6 +81,11 @@ public class QrCodeControllerService {
             case TIMEOUT:
                 throw new CacheTimeoutException("resource for key '" + key + "' expired");
         }
-        return dataSupplierMap.get(key).get();
+        Supplier<String> supplier = dataSupplierMap.get(key);
+        if (null == supplier) {
+            throw new CacheTimeoutException("resource for key '" + key + "' expired");
+        }
+        return supplier.get();
     }
+
 }

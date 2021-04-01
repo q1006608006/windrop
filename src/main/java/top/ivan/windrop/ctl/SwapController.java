@@ -1,13 +1,13 @@
 package top.ivan.windrop.ctl;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,7 +33,6 @@ import top.ivan.windrop.util.IDUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -85,20 +84,22 @@ public class SwapController {
     }
 
     @PostMapping("apply")
-    public ResponseEntity<?> apply(@RequestBody ApplyRequest request, ServerWebExchange exchange) {
-        InetSocketAddress address = exchange.getRequest().getRemoteAddress();
+    public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request, ServerWebExchange exchange) {
         log.debug("receive apply request from '{}'", exchange.getRequest().getRemoteAddress());
-
-        String ip = address.getAddress().getHostAddress();
-        if (!ipVerifier.accessible(ip)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApplyResponse.failed("无权限访问"));
-        }
-        if (!confirm(ip, request)) {
-            return ResponseEntity.ok().body(ApplyResponse.failed("请求已被取消"));
-        }
-        String accessKey = keyService.getKey(WinDropConfiguration.SWAP_GROUP);
-        log.debug("apply for accessKey: {}", accessKey);
-        return ResponseEntity.ok(ApplyResponse.success(accessKey));
+        return Mono.fromSupplier(() -> {
+            String accessKey = keyService.getKey(WinDropConfiguration.SWAP_GROUP);
+            return ApplyResponse.success(accessKey);
+        }).doFirst(() -> {
+            String ip = Objects.requireNonNull(exchange.getRequest().getRemoteAddress()).getAddress().getHostAddress();
+            if (!ipVerifier.accessible(ip)) {
+                log.info("unavailable ip: {}", ip);
+                throw new HttpClientException(HttpStatus.FORBIDDEN, "未授予白名单");
+            }
+            if (!confirm(ip, request)) {
+                log.debug("canceled the request: {}", JSONObject.toJSONString(request));
+                throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
+            }
+        });
     }
 
     @PostMapping("push")

@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.util.SystemUtil;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import static top.ivan.windrop.WinDropConfiguration.CONNECT_GROUP;
@@ -26,12 +28,15 @@ public class LocalConnectHandler {
     @Autowired
     private RandomAccessKeyService keyService;
 
-    public String newConnect() {
+    public String newConnect(int second) {
         JSONObject data = new JSONObject();
         data.put("ipList", SystemUtil.getLocalIPList());
         data.put("token", keyService.getKey(CONNECT_GROUP));
         data.put("port", config.getPort());
         String qrBody = data.toJSONString();
+        Map<String, Object> session = new HashMap<>();
+        session.put("maxAccess", second);
+
         return qrCodeService.register(k -> qrBody, 1, 60);
     }
 

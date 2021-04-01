@@ -36,6 +36,10 @@ public class WatchedFile {
         return this.watcher.isUpdated(this.watchFile);
     }
 
+    public boolean isExist() {
+        return this.watchFile.exists();
+    }
+
     public byte[] load() throws IOException {
         if (this.watchFile.exists()) {
             return Files.readAllBytes(this.watchFile.toPath());
