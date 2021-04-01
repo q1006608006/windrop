@@ -40,7 +40,7 @@ public class ConnectController {
 
         String sign = request.getOrDefault("sign", "");
         String deviceId = request.getOrDefault("deviceId", "");
-
+//todo 新增一个字段 type: 5min,30min,1h,1d,3d,7d,forever,keyServer的GROUP_KEY后缀同样加上type，实现不同期限的key互不影响
         if (!handler.match(deviceId, sign)) {
             log.info("valid failed, reject it");
             return failure(HttpStatus.UNAUTHORIZED, "未通过核验");
