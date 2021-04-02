@@ -1,23 +1,29 @@
 package top.ivan.windrop.ctl;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 import top.ivan.windrop.WinDropApplication;
-import top.ivan.windrop.bean.AccessUser;
+import top.ivan.windrop.bean.ConnectRequest;
+import top.ivan.windrop.bean.ConnectResponse;
+import top.ivan.windrop.ex.HttpClientException;
+import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.svc.LocalConnectHandler;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.util.IDUtil;
+import top.ivan.windrop.util.SystemUtil;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.net.InetSocketAddress;
 
 /**
  * @author Ivan
@@ -35,43 +41,80 @@ public class ConnectController {
     private LocalConnectHandler handler;
 
     @PostMapping("connect")
-    public ResponseEntity<Map<String, Object>> connect(@RequestBody Map<String, String> request, ServerWebExchange exchange) {
-        log.info("receive decrypt request from '{}'", exchange.getRequest().getRemoteAddress());
+    public Mono<ConnectResponse> connect(@RequestBody ConnectRequest request, ServerWebExchange exchange) {
+        InetSocketAddress remoteAddress = exchange.getRequest().getRemoteAddress();
+        log.info("receive decrypt request from '{}'", remoteAddress);
 
-        String sign = request.getOrDefault("sign", "");
-        String deviceId = request.getOrDefault("deviceId", "");
-//todo 新增一个字段 type: 5min,30min,1h,1d,3d,7d,forever,keyServer的GROUP_KEY后缀同样加上type，实现不同期限的key互不影响
-        if (!handler.match(deviceId, sign)) {
+        if (StringUtils.isEmpty(request.getDeviceId())
+                || StringUtils.isEmpty(request.getSign())
+                || StringUtils.isEmpty(request.getData())) {
+            throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
+        }
+        if (!handler.match(request.getDeviceId(), request.getSign())) {
             log.info("valid failed, reject it");
-            return failure(HttpStatus.UNAUTHORIZED, "未通过核验");
+            throw new HttpClientException(HttpStatus.UNAUTHORIZED, "未通过核验");
         }
 
-        String uid = IDUtil.getShortUuid();
-        AccessUser user;
+        JSONObject option;
+        Integer maxAccess;
         try {
-            boolean confirmNewUser = WinDropApplication.WindropHandler.confirm("新连接", "是否允许" + deviceId + "(" + exchange.getRequest().getRemoteAddress().getAddress().getHostAddress() + ")连接windrop?");
-            if (!confirmNewUser) {
-                return failure(HttpStatus.OK, "拒绝连接");
-            }
-            user = userService.newUser(uid, deviceId, IDUtil.get32UUID());
-        } catch (IOException e) {
-            throw new RuntimeException("数据文件无法访问", e);
+            option = handler.getOption(request.getData());
+            maxAccess = option.getInteger("maxAccess");
+        } catch (Exception e) {
+            throw new HttpClientException(HttpStatus.BAD_REQUEST, "提交了不合理的值");
         }
 
-        Map<String, Object> data = new HashMap<>();
-        log.info("valid success");
-        data.put("msg", "");
-        data.put("success", true);
-        data.put("id", uid);
-        data.put("validKey", user.getValidKey());
-        return ResponseEntity.ok(data);
+        return Mono.fromSupplier(() -> {
+            if (!confirm(maxAccess, request, remoteAddress.getAddress().getHostAddress())) {
+                return failure("拒绝连接");
+            }
+            String uid = generateId(request.getDeviceId());
+            String validKey = IDUtil.get32UUID();
+            try {
+                userService.newUser(uid, request.getDeviceId(), validKey, maxAccess);
+            } catch (IOException e) {
+                log.error("create new user failed", e);
+                throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常");
+            } catch (Exception e) {
+                log.error("init user failed with option: " + option, e);
+                throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
+            }
+            return ok(uid, validKey);
+        }).doOnSuccess(rsp -> handler.update());
     }
 
-    private ResponseEntity<Map<String, Object>> failure(HttpStatus status, String msg) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("success", false);
-        data.put("message", msg);
-        return ResponseEntity.status(status).body(data);
+    private boolean confirm(int maxAccess, ConnectRequest request, String host) {
+        String accessTime;
+        if (maxAccess < 0) {
+            accessTime = "永久";
+        } else if (maxAccess % 60 != 0 || maxAccess < 60) {
+            accessTime = maxAccess + "秒";
+        } else if (maxAccess % 3600 != 0 || maxAccess < 3600) {
+            accessTime = maxAccess / 60 + "分钟";
+        } else if (maxAccess % 3600 * 24 != 0 || maxAccess < 3600 * 24) {
+            accessTime = maxAccess / 3600 + "小时";
+        } else {
+            accessTime = maxAccess / (3600 * 24) + "天";
+        }
+        return WinDropApplication.WindropHandler.confirm("新连接", "是否允许" + request.getDeviceId() + "(" + host + ")连接windrop[" + accessTime + "]?");
     }
 
+    private ConnectResponse failure(String msg) {
+        ConnectResponse rsp = new ConnectResponse();
+        rsp.setSuccess(false);
+        rsp.setMessage(msg);
+        return rsp;
+    }
+
+    private ConnectResponse ok(String id, String key) {
+        ConnectResponse rsp = new ConnectResponse();
+        rsp.setSuccess(false);
+        rsp.setId(id);
+        rsp.setValidKey(key);
+        return rsp;
+    }
+
+    private String generateId(String deviceId) {
+        return DigestUtils.sha256Hex(SystemUtil.getSystemKey() + deviceId).substring(0, 8);
+    }
 }

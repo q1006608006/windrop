@@ -86,19 +86,20 @@ public class SwapController {
     @PostMapping("apply")
     public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request, ServerWebExchange exchange) {
         log.debug("receive apply request from '{}'", exchange.getRequest().getRemoteAddress());
+
+        String ip = Objects.requireNonNull(exchange.getRequest().getRemoteAddress()).getAddress().getHostAddress();
+        if (!ipVerifier.accessible(ip)) {
+            log.info("unavailable ip: {}", ip);
+            throw new HttpClientException(HttpStatus.FORBIDDEN, "未授予白名单");
+        }
+        if (!confirm(ip, request)) {
+            log.debug("canceled the request: {}", JSONObject.toJSONString(request));
+            throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
+        }
+
         return Mono.fromSupplier(() -> {
             String accessKey = keyService.getKey(WinDropConfiguration.SWAP_GROUP);
             return ApplyResponse.success(accessKey);
-        }).doFirst(() -> {
-            String ip = Objects.requireNonNull(exchange.getRequest().getRemoteAddress()).getAddress().getHostAddress();
-            if (!ipVerifier.accessible(ip)) {
-                log.info("unavailable ip: {}", ip);
-                throw new HttpClientException(HttpStatus.FORBIDDEN, "未授予白名单");
-            }
-            if (!confirm(ip, request)) {
-                log.debug("canceled the request: {}", JSONObject.toJSONString(request));
-                throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
-            }
         });
     }
 
@@ -113,74 +114,77 @@ public class SwapController {
         } else {
             data = ConvertUtil.decodeBase64(request.getData());
         }
+        validPushRequest(request, data);
 
+        StringBuilder msgBuilder = new StringBuilder();
         return Mono.fromSupplier(() -> {
             try {
                 AccessUser user = prepareUser(request.getId());
-                String msg = "收到来自" + user.getAlias();
+                msgBuilder.append("收到来自").append(user.getAlias());
                 switch (request.getType()) {
                     case "file":
                         File file = setFile2Clipboard(request, data);
                         log.info("saved file: '{}', length: {}", file.getAbsolutePath(), file.length());
-                        msg += "的文件: " + file.getAbsolutePath();
+                        msgBuilder.append("的文件: ").append(file.getAbsolutePath());
                         break;
 
                     case "text":
                         String text = setText2Clipboard(request, data);
                         log.info("update clipboard's text" + (config.isEnableShowText() ? ": '" + text + "'" : ""));
-                        msg += "的消息" + (config.isEnableShowText() ? ": '" + text + "'" : "");
+                        msgBuilder.append("的消息").append(config.isEnableShowText() ? ": '" + text + "'" : "");
                         break;
 
                     case "image":
                         file = setImage2Clipboard(request, data);
                         log.info("update clipboard's image; saved image to file: '{}', length: {}", file.getAbsolutePath(), file.length());
-                        msg += "的图片: " + file.getAbsolutePath();
+                        msgBuilder.append("的图片: ").append(file.getAbsolutePath());
                         break;
 
                     default:
                         log.info("un support type: {}", request.getType());
                         throw new HttpClientException(HttpStatus.BAD_REQUEST, "不支持的操作");
                 }
-                systemNotify(request.getType(), msg, true);
 
                 return CommonResponse.success("更新成功");
             } catch (Exception e) {
                 log.error("更新剪贴板失败", e);
                 throw new HttpClientException(HttpStatus.BAD_REQUEST, "服务异常");
             }
-        }).doFirst(() -> validPushRequest(request, data));
+        }).doOnSuccess(rsp -> systemNotify(request.getType(), msgBuilder.toString(), true));
     }
 
     @PostMapping("pull")
     public Mono<WindropResponse> getClipboard(@RequestBody WindropRequest request, ServerWebExchange exchange) {
         log.info("receive pull request from '{}'", exchange.getRequest().getRemoteAddress());
 
-        AccessUser user = prepareUser(request.getId());
+        validPullRequest(request);
 
+        AccessUser user = prepareUser(request.getId());
+        ClipBean clipBean = ClipUtil.getClipBean();
+        String type = ClipUtil.getClipBeanType(clipBean);
+
+        StringBuilder msgBuilder = new StringBuilder();
         return Mono.fromSupplier(() -> {
-            ClipBean clipBean = ClipUtil.getClipBean();
-            String type = ClipUtil.getClipBeanType(clipBean);
             byte[] srcData;
             String fileName = null;
-            String msg;
 
             try {
                 if (clipBean instanceof TextClipBean) {
                     srcData = ((TextClipBean) clipBean).getBytes(config.getCharset());
-                    msg = "发送剪切板文本到设备";
+                    msgBuilder.append("发送剪切板文本到设备");
                 } else if (clipBean instanceof FileClipBean) {
                     if (((FileClipBean) clipBean).getLength() > config.getMaxFileLength()) {
-                        throw new LengthTooLargeException(clipBean);
+                        throw new LengthTooLargeException();
                     }
                     fileName = ((FileClipBean) clipBean).getFileName();
                     srcData = clipBean.getBytes();
-                    msg = "发送剪切板文件到设备";
+                    msgBuilder.append("发送剪切板文件到设备");
                 } else if (clipBean instanceof ImageClipBean) {
                     if (clipBean.getBytes().length > config.getMaxFileLength()) {
-                        throw new LengthTooLargeException(clipBean);
+                        throw new LengthTooLargeException();
                     }
                     srcData = clipBean.getBytes();
-                    msg = "发送剪切板图片到设备";
+                    msgBuilder.append("发送剪切板图片到设备");
                 } else {
                     throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "不支持windrop的类型");
                 }
@@ -199,13 +203,11 @@ public class SwapController {
             String sign = DigestUtils.sha256Hex(dataSha + ";" + user.getValidKey());
             response.setSign(sign);
 
-            systemNotify(type, msg, false);
             return response;
         }).onErrorResume(LengthTooLargeException.class, e -> {
             String resourceId = IDUtil.getShortUuid();
             log.info("data is too large, shared with resourceId: {}", resourceId);
 
-            ClipBean clipBean = e.getClipBean();
             File file = null;
             if (clipBean instanceof FileBean) {
                 file = ((FileBean) clipBean).getFile();
@@ -227,12 +229,11 @@ public class SwapController {
             resp.setServerUpdateTime(clipBean.getUpdateTime());
             resp.setResourceId(resourceId);
             resp.setSuccess(false);
-            resp.setMessage("302 Moved");
-
-            systemNotify(ClipUtil.getClipBeanType(clipBean), "发送大文件到设备", false);
+            resp.setMessage("Request Moved");
+            msgBuilder.append("发送大文件到设备");
 
             return Mono.just(resp);
-        }).doFirst(() -> validPullRequest(request));
+        }).doOnSuccess(rsp -> systemNotify(type, msgBuilder.toString(), false));
     }
 
     private File setFile2Clipboard(WindropRequest clipboardData, byte[] data) throws IOException {
@@ -286,6 +287,9 @@ public class SwapController {
             if (null == user) {
                 throw new HttpClientException(HttpStatus.UNAUTHORIZED, "未验证的设备(id: " + id + ")");
             }
+            if (user.isExpired()) {
+                throw new HttpClientException(HttpStatus.UNAUTHORIZED, "使用许可已过期");
+            }
             return user;
         } catch (IOException e) {
             log.error("加载用户数据失败", e);
@@ -302,6 +306,7 @@ public class SwapController {
     private boolean confirm(String ip, ApplyRequest request) {
         String type = request.getType();
         ClipBean bean = ClipUtil.getClipBean();
+        AccessUser user = prepareUser(request.getId());
         if (config.needConfirm(ClipUtil.getClipBeanType(bean), !type.equalsIgnoreCase("pull"))) {
             String msg;
             switch (type) {
@@ -312,14 +317,14 @@ public class SwapController {
                     } else {
                         itemName = ClipUtil.getClipBeanTypeName(bean);
                     }
-                    msg = "是否推送'" + itemName + "'到设备?";
+                    msg = "是否推送'" + itemName + "'到" + user.getAlias() + "?";
                     break;
                 case "file":
                 case "image":
-                    msg = "是否接收文件/图片: " + request.getFilename() + "（" + request.getSize() + ")?";
+                    msg = "是否接收来自" + user.getAlias() + "的文件/图片: " + request.getFilename() + "（" + request.getSize() + ")?";
                     break;
                 case "text":
-                    msg = "是否接收文本?";
+                    msg = "是否接收来自" + user.getAlias() + "的文本?";
                     break;
                 default:
                     msg = "未定义请求: " + JSON.toJSONString(request);

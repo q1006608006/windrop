@@ -141,15 +141,16 @@ public class WinDropApplication {
             return "http://localhost:" + beanHandler.config.getPort();
         }
 
-        private void showConnectCode() {
+        private void showConnectCode(int second) {
             try {
-                String key = beanHandler.connectHandler.newConnect(-1);
+                String key = beanHandler.connectHandler.newConnect(second);
                 Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/code/" + key));
             } catch (Exception e) {
                 alert("无法打开网页");
                 log.error("打开网页失败", e);
             }
         }
+
 
         private void showConfig() {
             try {
@@ -254,7 +255,15 @@ public class WinDropApplication {
                     .addLabel(ICON_STOP, (m, t) -> stop())
                     .addLabel(ICON_RESTART, (m, t) -> restart())
                     .addSeparator()
-                    .addLabel(ICON_SHOW_CODE, (m, t) -> showConnectCode())
+                    .addSecondLabel(ICON_SHOW_CODE,"10分钟" ,(m, t) -> showConnectCode(10 * 60))
+                    .addSecondLabel(ICON_SHOW_CODE,"1小时" ,(m, t) -> showConnectCode(60 * 60))
+                    .addSecondLabel(ICON_SHOW_CODE,"3小时" ,(m, t) -> showConnectCode(180 * 60))
+                    .addSecondLabel(ICON_SHOW_CODE,null,null)
+                    .addSecondLabel(ICON_SHOW_CODE,"1天" ,(m, t) -> showConnectCode(60 * 60 * 24))
+                    .addSecondLabel(ICON_SHOW_CODE,"1周" ,(m, t) -> showConnectCode(60 * 60 * 24 * 7))
+                    .addSecondLabel(ICON_SHOW_CODE,"1月" ,(m, t) -> showConnectCode(60 * 60 * 24 * 30))
+                    .addSecondLabel(ICON_SHOW_CODE,null,null)
+                    .addSecondLabel(ICON_SHOW_CODE,"永久" ,(m, t) -> showConnectCode(-1))
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_CONFIG, (m, t) -> showConfig())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_ACCESSIBLE, (m, t) -> showAccessible())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_REMOVE_DEVICES, (m, t) -> clearDevice())

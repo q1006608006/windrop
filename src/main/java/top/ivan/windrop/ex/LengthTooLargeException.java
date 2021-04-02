@@ -1,7 +1,6 @@
 package top.ivan.windrop.ex;
 
 import org.springframework.http.HttpStatus;
-import top.ivan.windrop.clip.ClipBean;
 
 /**
  * @author Ivan
@@ -10,15 +9,11 @@ import top.ivan.windrop.clip.ClipBean;
  */
 public class LengthTooLargeException extends HttpClientException {
 
-    private ClipBean clipBean;
-
-    public LengthTooLargeException(ClipBean bean) {
+    public LengthTooLargeException() {
         super(HttpStatus.FORBIDDEN, "传输的数据过长");
-        this.clipBean = bean;
     }
 
-
-    public ClipBean getClipBean() {
-        return clipBean;
+    public LengthTooLargeException(String msg) {
+        super(HttpStatus.FORBIDDEN, msg);
     }
 }

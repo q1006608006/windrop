@@ -1,6 +1,8 @@
 package top.ivan.windrop.util;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.net.*;
@@ -13,6 +15,7 @@ import java.util.*;
  */
 @Slf4j
 public class SystemUtil {
+    private static String SYSTEM_KEY;
 
     public static String getPCName() {
         String PC_NAME;
@@ -141,6 +144,22 @@ public class SystemUtil {
             log.error("get cpu sn error", e);
             return "";
         }
+    }
+
+    public static String getSystemKey() {
+        if (StringUtils.isEmpty(SYSTEM_KEY)) {
+            String keyStr = String.join(";", SystemUtil.getPCName(), SystemUtil.getMotherboardSN(), SystemUtil.getCpuSN());
+            SYSTEM_KEY = DigestUtils.md5Hex(keyStr);
+        }
+        return SYSTEM_KEY;
+    }
+
+    public static byte[] encrypt(byte[] data) {
+        return ConvertUtil.encrypt(data, getSystemKey());
+    }
+
+    public static byte[] decrypt(byte[] data) {
+        return ConvertUtil.decrypt(data, getSystemKey());
     }
 
 }

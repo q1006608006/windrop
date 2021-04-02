@@ -2,10 +2,7 @@ package top.ivan.windrop.svc;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.util.StringUtils;
 import top.ivan.windrop.bean.AccessUser;
-import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.SystemUtil;
 import top.ivan.windrop.util.WatchedFile;
 
@@ -28,7 +25,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class PersistUserService {
-    private static String SYSTEM_KEY;
     private final WatchedFile fileHandler;
 
     private Map<String, AccessUser> userMap;
@@ -45,12 +41,17 @@ public class PersistUserService {
         return takeUserMap().values().stream().filter(u -> Objects.equals(alias, u.getAlias())).collect(Collectors.toList());
     }
 
-    public AccessUser newUser(String id, String name, String validKey) throws IOException {
+    public AccessUser newUser(String id, String name, String validKey, int maxSecond) throws IOException {
         AccessUser accessUser = new AccessUser();
         accessUser.setId(id);
         accessUser.setAlias(name);
         accessUser.setValidKey(validKey);
         accessUser.setAccessTime(System.currentTimeMillis());
+        if (maxSecond > -1) {
+            accessUser.setExpireTime(accessUser.getAccessTime() + maxSecond * 1000);
+        } else {
+            accessUser.setExpireTime(-1);
+        }
         takeUserMap().put(id, accessUser);
         saveUserMap();
         return accessUser;
@@ -90,7 +91,7 @@ public class PersistUserService {
                     saveUserMap();
                 } else {
                     try {
-                        data = ConvertUtil.decrypt(data, getSystemKey());
+                        data = SystemUtil.decrypt(data);
                     } catch (Exception e) {
                         log.error("", e);
                         log.error("尝试解密文件失败，可能的情况为该应用是由其他机器移植而来！");
@@ -111,19 +112,12 @@ public class PersistUserService {
         Path path = fileHandler.getPath();
         List<String> lists = userMap.values().stream().map(JSONObject::toJSONString).collect(Collectors.toList());
         String data = String.join("\n", lists);
-        byte[] bytes = ConvertUtil.encrypt(data.getBytes(), getSystemKey());
+        byte[] bytes = SystemUtil.encrypt(data.getBytes());
         Files.deleteIfExists(path);
         Files.createFile(path);
         Files.write(path, bytes);
         fileHandler.sync();
     }
 
-    private static String getSystemKey() {
-        if (StringUtils.isEmpty(SYSTEM_KEY)) {
-            String keyStr = String.join(";", SystemUtil.getPCName(), SystemUtil.getMotherboardSN(), SystemUtil.getCpuSN());
-            SYSTEM_KEY = DigestUtils.md5Hex(keyStr);
-        }
-        return SYSTEM_KEY;
-    }
 
 }

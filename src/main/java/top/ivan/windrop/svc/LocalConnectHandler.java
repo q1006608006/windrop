@@ -5,10 +5,10 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import top.ivan.windrop.bean.WindropConfig;
+import top.ivan.windrop.util.ConvertUtil;
+import top.ivan.windrop.util.IDUtil;
 import top.ivan.windrop.util.SystemUtil;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import static top.ivan.windrop.WinDropConfiguration.CONNECT_GROUP;
@@ -28,20 +28,34 @@ public class LocalConnectHandler {
     @Autowired
     private RandomAccessKeyService keyService;
 
-    public String newConnect(int second) {
-        JSONObject data = new JSONObject();
-        data.put("ipList", SystemUtil.getLocalIPList());
-        data.put("token", keyService.getKey(CONNECT_GROUP));
-        data.put("port", config.getPort());
-        String qrBody = data.toJSONString();
-        Map<String, Object> session = new HashMap<>();
-        session.put("maxAccess", second);
+    private String randomKey = IDUtil.get32UUID();
 
+    public String newConnect(int second) {
+        JSONObject qrData = new JSONObject();
+        qrData.put("ipList", SystemUtil.getLocalIPList());
+        qrData.put("token", keyService.getKey(CONNECT_GROUP));
+        qrData.put("port", config.getPort());
+        JSONObject option = new JSONObject();
+        option.put("maxAccess", second);
+        option.put("salt", IDUtil.getShortUuid());
+        String encryptData = ConvertUtil.encrypt(option.toJSONString(), randomKey);
+        qrData.put("data", encryptData);
+
+        String qrBody = qrData.toJSONString();
         return qrCodeService.register(k -> qrBody, 1, 60);
     }
 
     public boolean match(String deviceId, String sign) {
         return keyService.match(CONNECT_GROUP, key -> Objects.equals(DigestUtils.sha256Hex(String.join(";", deviceId, key, config.getPassword())), sign));
+    }
+
+    public JSONObject getOption(String data) {
+        String body = ConvertUtil.decrypt(data, randomKey);
+        return JSONObject.parseObject(body);
+    }
+
+    public void update() {
+        randomKey = IDUtil.get32UUID();
     }
 
 }
