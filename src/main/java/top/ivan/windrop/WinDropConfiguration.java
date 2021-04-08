@@ -25,6 +25,7 @@ public class WinDropConfiguration {
 
     public static final String CONNECT_GROUP = "CONNECT";
     public static final String SWAP_GROUP = "SWAP";
+    public static final String FILE_UPLOAD_GROUP = "FILE_UPLOAD";
 
     @Bean
     public HttpMessageConverter<BufferedImage> imageConverter(List<HttpMessageConverter<?>> converters) {

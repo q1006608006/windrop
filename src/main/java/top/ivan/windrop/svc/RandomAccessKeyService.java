@@ -22,6 +22,10 @@ public class RandomAccessKeyService {
         return groupMap.computeIfAbsent(group, g -> new RandomAccessKey(30)).getAccessKey();
     }
 
+    public String getKey(String group,int interval) {
+        return groupMap.computeIfAbsent(group, g -> new RandomAccessKey(interval)).getAccessKey();
+    }
+
     public boolean match(String group, Predicate<String> test) {
         RandomAccessKey key = groupMap.get(group);
         return key != null && key.match(test, true);

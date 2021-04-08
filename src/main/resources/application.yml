@@ -12,6 +12,8 @@ spring:
       name: ${windrop.username:}
       #      password: $2a$10$ZcpJcjag3FtdJhwPmFBo4OMtiHSjblmUQ4rCKCaJzKPFAWjFJGKja
       password: ${windrop.password:}
+  thymeleaf:
+    cache: false
 
 logging:
   level:

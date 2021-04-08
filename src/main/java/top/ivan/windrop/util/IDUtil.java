@@ -22,7 +22,6 @@ public class IDUtil {
             shortBuffer.append(chars[x % 0x3E]);
         }
         return shortBuffer.toString();
-
     }
 
     public static String get32UUID() {

@@ -12,4 +12,8 @@ public class HttpServerException extends HttpServerErrorException {
     public HttpServerException(HttpStatus statusCode, String message) {
         super(message, statusCode, "", null, null, null);
     }
+
+    public HttpServerException(String message) {
+        super(message, HttpStatus.INTERNAL_SERVER_ERROR, "", null, null, null);
+    }
 }
