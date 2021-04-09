@@ -50,7 +50,7 @@ public class SwapController {
     private static final File TEMP_DIRECTORY_FILE;
 
     static {
-        File tempDir = new File("temp");
+        File tempDir = new File(WinDropConfiguration.TEMP_FILE_PATH);
         if (!tempDir.exists() || !tempDir.isDirectory()) {
             tempDir.mkdir();
         }
@@ -84,20 +84,21 @@ public class SwapController {
     }
 
     @PostMapping("apply")
-    public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request, ServerWebExchange exchange) {
+    public Mono<ApplyResponse> apply(@RequestBody Mono<ApplyRequest> mono, ServerWebExchange exchange) {
         log.debug("receive apply request from '{}'", exchange.getRequest().getRemoteAddress());
-
         String ip = Objects.requireNonNull(exchange.getRequest().getRemoteAddress()).getAddress().getHostAddress();
-        if (!ipVerifier.accessible(ip)) {
-            log.info("unavailable ip: {}", ip);
-            throw new HttpClientException(HttpStatus.FORBIDDEN, "未授予白名单");
-        }
-        if (!confirm(ip, request)) {
-            log.debug("canceled the request: {}", JSONObject.toJSONString(request));
-            throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
-        }
 
-        return Mono.fromSupplier(() -> {
+        return mono.doOnSubscribe(s -> {
+            if (!ipVerifier.accessible(ip)) {
+                log.info("unavailable ip: {}", ip);
+                throw new HttpClientException(HttpStatus.FORBIDDEN, "未授予白名单");
+            }
+        }).doOnNext(request -> {
+            if (!confirm(ip, request)) {
+                log.debug("canceled the request: {}", JSONObject.toJSONString(request));
+                throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
+            }
+        }).map(request -> {
             String accessKey = keyService.getKey(WinDropConfiguration.SWAP_GROUP);
             return ApplyResponse.success(accessKey);
         });
@@ -114,43 +115,43 @@ public class SwapController {
         } else {
             data = ConvertUtil.decodeBase64(request.getData());
         }
-        validPushRequest(request, data);
 
         StringBuilder msgBuilder = new StringBuilder();
-        return Mono.fromSupplier(() -> {
-            try {
-                AccessUser user = prepareUser(request.getId());
-                msgBuilder.append("收到来自").append(user.getAlias());
-                switch (request.getType()) {
-                    case "file":
-                        File file = setFile2Clipboard(request, data);
-                        log.info("saved file: '{}', length: {}", file.getAbsolutePath(), file.length());
-                        msgBuilder.append("的文件: ").append(file.getAbsolutePath());
-                        break;
+        return Mono.fromSupplier(() -> prepareUser(request.getId()))
+                .doFirst(() -> validPushRequest(request, data))
+                .doOnNext(user -> {
+                    try {
+                        msgBuilder.append("收到来自").append(user.getAlias());
+                        switch (request.getType()) {
+                            case "file":
+                                File file = setFile2Clipboard(request, data);
+                                log.info("saved file: '{}', length: {}", file.getAbsolutePath(), file.length());
+                                msgBuilder.append("的文件: ").append(file.getAbsolutePath());
+                                break;
 
-                    case "text":
-                        String text = setText2Clipboard(request, data);
-                        log.info("update clipboard's text" + (config.isEnableShowText() ? ": '" + text + "'" : ""));
-                        msgBuilder.append("的消息").append(config.isEnableShowText() ? ": '" + text + "'" : "");
-                        break;
+                            case "text":
+                                String text = setText2Clipboard(request, data);
+                                log.info("update clipboard's text" + (config.isEnableShowText() ? ": '" + text + "'" : ""));
+                                msgBuilder.append("的消息").append(config.isEnableShowText() ? ": '" + text + "'" : "");
+                                break;
 
-                    case "image":
-                        file = setImage2Clipboard(request, data);
-                        log.info("update clipboard's image; saved image to file: '{}', length: {}", file.getAbsolutePath(), file.length());
-                        msgBuilder.append("的图片: ").append(file.getAbsolutePath());
-                        break;
+                            case "image":
+                                file = setImage2Clipboard(request, data);
+                                log.info("update clipboard's image; saved image to file: '{}', length: {}", file.getAbsolutePath(), file.length());
+                                msgBuilder.append("的图片: ").append(file.getAbsolutePath());
+                                break;
 
-                    default:
-                        log.info("un support type: {}", request.getType());
-                        throw new HttpClientException(HttpStatus.BAD_REQUEST, "不支持的操作");
-                }
-
-                return CommonResponse.success("更新成功");
-            } catch (Exception e) {
-                log.error("更新剪贴板失败", e);
-                throw new HttpClientException(HttpStatus.BAD_REQUEST, "服务异常");
-            }
-        }).doOnSuccess(rsp -> systemNotify(request.getType(), msgBuilder.toString(), true));
+                            default:
+                                log.info("un support type: {}", request.getType());
+                                throw new HttpClientException(HttpStatus.BAD_REQUEST, "不支持的操作");
+                        }
+                    } catch (Exception e) {
+                        log.error("更新剪贴板失败", e);
+                        throw new HttpClientException(HttpStatus.BAD_REQUEST, "服务异常");
+                    }
+                })
+                .thenReturn(CommonResponse.success("更新成功"))
+                .doOnSuccess(rsp -> systemNotify(request.getType(), msgBuilder.toString(), true));
     }
 
     @PostMapping("pull")

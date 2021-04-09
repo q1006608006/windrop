@@ -12,4 +12,5 @@ public class ConnectRequest {
     private String sign;
     private String deviceId;
     private String data;
+    private String locate;
 }

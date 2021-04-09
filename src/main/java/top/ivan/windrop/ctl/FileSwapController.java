@@ -1,5 +1,6 @@
 package top.ivan.windrop.ctl;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -11,7 +12,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
+import top.ivan.windrop.WinDropConfiguration;
+import top.ivan.windrop.bean.CommonResponse;
 import top.ivan.windrop.ex.HttpClientException;
+import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.RandomAccessKeyService;
 import top.ivan.windrop.svc.ResourceSharedService;
@@ -19,8 +23,8 @@ import top.ivan.windrop.util.IDUtil;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.Map;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Optional;
 
 /**
@@ -59,11 +63,9 @@ public class FileSwapController {
         });
     }
 
-    @GetMapping("/upload/{key}")
-    public Mono<String> ss(@PathVariable String key, @RequestParam("id") String id, Model model) {
-        model.addAttribute("hidden", IDUtil.getShortUuid());
-        return Mono.just("upload");
-/*        return Mono.fromSupplier(() -> {
+    @GetMapping("/upload")
+    public Mono<String> uploadModel(@RequestParam String key, @RequestParam String id, Model model) {
+        return Mono.fromSupplier(() -> {
             try {
                 return userService.findUser(id);
             } catch (IOException e) {
@@ -74,15 +76,24 @@ public class FileSwapController {
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "核验未通过");
             }
         }).map(user -> {
-            model.addAttribute("hidden", keyService.getKey(WinDropConfiguration.FILE_UPLOAD_GROUP, 5));
+            model.addAttribute("hidden", keyService.getKey(WinDropConfiguration.FILE_UPLOAD_GROUP, 3 * 60));
             return "upload";
-        });*/
+        });
     }
 
     @ResponseBody
     @PostMapping("/upload")
-    public Mono<Map<String, String>> fileUpload(@RequestPart("file") Mono<FilePart> mono, @RequestPart("hidden") String hidden) {
-        System.out.println("receive hidden: " + hidden);
-        return mono.doOnNext(p -> System.out.println(p.filename())).map(f -> Collections.singletonMap("t", "1"));
+    public Mono<CommonResponse> fileUpload(@RequestPart("file") Mono<FilePart> mono, @RequestPart("hidden") String hidden) {
+        return mono.doFirst(() -> {
+            if (!keyService.match(WinDropConfiguration.FILE_UPLOAD_GROUP, k -> k.equals(hidden))) {
+                throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
+            }
+        }).doOnNext(fp -> {
+            String fn = fp.filename();
+            Path p = Paths.get(WinDropConfiguration.UPLOAD_FILES_PATH, fn);
+            fp.transferTo(p);
+        }).map(fp -> CommonResponse.success("上传成功"));
+//        System.out.println("receive hidden: " + hidden);
+//        return mono.doOnNext(p -> System.out.println(p.filename())).map(f -> Collections.singletonMap("t", "1"));
     }
 }

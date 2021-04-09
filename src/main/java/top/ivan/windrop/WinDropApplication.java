@@ -91,19 +91,19 @@ public class WinDropApplication {
             try {
                 iconImage = Toolkit.getDefaultToolkit().getImage(new ClassPathResource("icon.png").getURL());
             } catch (IOException e) {
-                log.warn("加载图标失败", e);
+                log.warn("initialize tray icon failed", e);
             }
             createFrame();
             createTray();
         }
 
         public ConfigurableApplicationContext start() {
-            log.info("启动服务...");
+            log.info("start windrop service...");
             disableIcon(ICON_START);
             this.context = application.run(args);
             enableIcon(ICON_STOP);
             autoWired();
-            log.info("服务启动成功");
+            log.info("windrop started.");
             return context;
         }
 
@@ -117,22 +117,22 @@ public class WinDropApplication {
                 this.context.close();
             }
             enableIcon(ICON_START);
-            log.info("服务已关闭");
+            log.info("close windrop service...");
 
         }
 
         public void restart() {
-            log.info("重新服务...");
+            log.info("restart windrop service...");
             disableIcon(ICON_START);
             disableIcon(ICON_STOP);
             stop();
             start();
             enableIcon(ICON_STOP);
-            log.info("服务重启完成");
+            log.info("restart finished");
         }
 
         private void exit() {
-            log.info("退出服务中......");
+            log.info("shutdown windrop now...");
             stop();
             System.exit(0);
         }
@@ -147,23 +147,23 @@ public class WinDropApplication {
                 Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/code/" + key));
             } catch (Exception e) {
                 alert("无法打开网页");
-                log.error("打开网页失败", e);
+                log.error("open browser failed", e);
             }
         }
 
 
         private void showConfig() {
+            File config = new File("conf/config.properties");
             try {
-                File config = new File("conf/config.properties");
                 if (!config.exists()) {
                     alert("未创建'conf/config.properties'文件");
-                    log.warn("'conf/config.properties'文件不存在");
+                    log.warn("not found 'conf/config.properties'");
                 } else {
                     Desktop.getDesktop().open(config);
                 }
             } catch (Exception e) {
                 alert("无法打开配置文件");
-                log.error("打开文件失败", e);
+                log.error("open file '" + config.getAbsolutePath() + "' failed", e);
             }
         }
 
@@ -173,13 +173,13 @@ public class WinDropApplication {
             try {
                 if (!file.exists()) {
                     alert("未找到'logs/server.log'文件");
-                    log.warn("未找到日志文件");
+                    log.warn("can't found 'logs/server.log'");
                 } else {
                     Desktop.getDesktop().open(file);
                 }
             } catch (Exception e) {
                 alert("无法打开日志文件");
-                log.error("打开文件失败", e);
+                log.error("open file 'logs/server.log' failed", e);
             }
         }
 
@@ -194,14 +194,14 @@ public class WinDropApplication {
                     file.createNewFile();
                 } catch (Exception e) {
                     alert("无法创建白名单文件");
-                    log.error("创建文件异常，请检查", e);
+                    log.error("create file 'conf/ipList.txt' failed", e);
                 }
             }
             try {
                 Desktop.getDesktop().open(file);
             } catch (Exception e) {
                 alert("无法打开白名单文件");
-                log.error("打开文件失败", e);
+                log.error("open file 'conf/ipList.txt' failed", e);
             }
         }
 
@@ -227,7 +227,7 @@ public class WinDropApplication {
                 Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/code/" + qrKey));
             } catch (URISyntaxException | IOException e) {
                 alert("无法打开网页");
-                log.error("打开网页失败", e);
+                log.error("open browser failed", e);
             }
         }
 
@@ -235,8 +235,8 @@ public class WinDropApplication {
             try {
                 beanHandler.userService.deleteAll();
             } catch (IOException e) {
-                alert("重置认证设备");
-                log.error("重置认证设备", e);
+                alert("重置认证设备异常");
+                log.error("reset devices failed", e);
             }
         }
 
@@ -255,15 +255,15 @@ public class WinDropApplication {
                     .addLabel(ICON_STOP, (m, t) -> stop())
                     .addLabel(ICON_RESTART, (m, t) -> restart())
                     .addSeparator()
-                    .addSecondLabel(ICON_SHOW_CODE,"10分钟" ,(m, t) -> showConnectCode(10 * 60))
-                    .addSecondLabel(ICON_SHOW_CODE,"1小时" ,(m, t) -> showConnectCode(60 * 60))
-                    .addSecondLabel(ICON_SHOW_CODE,"3小时" ,(m, t) -> showConnectCode(180 * 60))
-                    .addSecondLabel(ICON_SHOW_CODE,null,null)
-                    .addSecondLabel(ICON_SHOW_CODE,"1天" ,(m, t) -> showConnectCode(60 * 60 * 24))
-                    .addSecondLabel(ICON_SHOW_CODE,"1周" ,(m, t) -> showConnectCode(60 * 60 * 24 * 7))
-                    .addSecondLabel(ICON_SHOW_CODE,"1月" ,(m, t) -> showConnectCode(60 * 60 * 24 * 30))
-                    .addSecondLabel(ICON_SHOW_CODE,null,null)
-                    .addSecondLabel(ICON_SHOW_CODE,"永久" ,(m, t) -> showConnectCode(-1))
+                    .addSecondLabel(ICON_SHOW_CODE, "10分钟", (m, t) -> showConnectCode(10 * 60))
+                    .addSecondLabel(ICON_SHOW_CODE, "1小时", (m, t) -> showConnectCode(60 * 60))
+                    .addSecondLabel(ICON_SHOW_CODE, "3小时", (m, t) -> showConnectCode(180 * 60))
+                    .addSecondLabel(ICON_SHOW_CODE, null, null)
+                    .addSecondLabel(ICON_SHOW_CODE, "1天", (m, t) -> showConnectCode(60 * 60 * 24))
+                    .addSecondLabel(ICON_SHOW_CODE, "1周", (m, t) -> showConnectCode(60 * 60 * 24 * 7))
+                    .addSecondLabel(ICON_SHOW_CODE, "1月", (m, t) -> showConnectCode(60 * 60 * 24 * 30))
+                    .addSecondLabel(ICON_SHOW_CODE, null, null)
+                    .addSecondLabel(ICON_SHOW_CODE, "永久", (m, t) -> showConnectCode(-1))
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_CONFIG, (m, t) -> showConfig())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_ACCESSIBLE, (m, t) -> showAccessible())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_REMOVE_DEVICES, (m, t) -> clearDevice())
@@ -280,7 +280,7 @@ public class WinDropApplication {
             try {
                 UIManager.setLookAndFeel(new WindowsLookAndFeel());
             } catch (Exception e) {
-                log.warn("设置风格失败，使用默认风格", e);
+                log.warn("set UI-style failed", e);
             }
             unVisibleFrame = new Frame();
             unVisibleFrame.setIconImage(iconImage);

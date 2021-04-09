@@ -22,7 +22,7 @@ public class RandomAccessKeyService {
         return groupMap.computeIfAbsent(group, g -> new RandomAccessKey(30)).getAccessKey();
     }
 
-    public String getKey(String group,int interval) {
+    public String getKey(String group, int interval) {
         return groupMap.computeIfAbsent(group, g -> new RandomAccessKey(interval)).getAccessKey();
     }
 

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.WinDropApplication;
+import top.ivan.windrop.bean.AccessUser;
 import top.ivan.windrop.bean.ConnectRequest;
 import top.ivan.windrop.bean.ConnectResponse;
 import top.ivan.windrop.ex.HttpClientException;
@@ -41,37 +42,37 @@ public class ConnectController {
     private LocalConnectHandler handler;
 
     @PostMapping("connect")
-    public Mono<ConnectResponse> connect(@RequestBody ConnectRequest request, ServerWebExchange exchange) {
+    public Mono<ConnectResponse> connect(@RequestBody Mono<ConnectRequest> mono, ServerWebExchange exchange) {
         InetSocketAddress remoteAddress = exchange.getRequest().getRemoteAddress();
         log.info("receive decrypt request from '{}'", remoteAddress);
 
-        if (StringUtils.isEmpty(request.getDeviceId())
-                || StringUtils.isEmpty(request.getSign())
-                || StringUtils.isEmpty(request.getData())) {
-            throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
-        }
-        if (!handler.match(request.getDeviceId(), request.getSign())) {
-            log.info("valid failed, reject it");
-            throw new HttpClientException(HttpStatus.UNAUTHORIZED, "未通过核验");
-        }
-
-        JSONObject option;
-        Integer maxAccess;
-        try {
-            option = handler.getOption(request.getData());
-            maxAccess = option.getInteger("maxAccess");
-        } catch (Exception e) {
-            throw new HttpClientException(HttpStatus.BAD_REQUEST, "提交了不合理的值");
-        }
-
-        return Mono.fromSupplier(() -> {
+        return mono.doOnNext(request -> {
+            if (StringUtils.isEmpty(request.getDeviceId())
+                    || StringUtils.isEmpty(request.getSign())
+                    || StringUtils.isEmpty(request.getData())) {
+                throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
+            }
+            if (!handler.match(request.getLocate(), request.getDeviceId(), request.getSign())) {
+                log.info("valid failed, reject it");
+                throw new HttpClientException(HttpStatus.UNAUTHORIZED, "未通过核验");
+            }
+        }).map(request -> {
+            JSONObject option;
+            Integer maxAccess;
+            try {
+                option = handler.getOption(request.getData());
+                maxAccess = option.getInteger("maxAccess");
+            } catch (Exception e) {
+                throw new HttpClientException(HttpStatus.BAD_REQUEST, "数据无效或过期");
+            }
             if (!confirm(maxAccess, request, remoteAddress.getAddress().getHostAddress())) {
                 return failure("拒绝连接");
             }
-            String uid = generateId(request.getDeviceId());
+            String uid = generateId(request.getDeviceId(), request.getLocate());
             String validKey = IDUtil.get32UUID();
             try {
-                userService.newUser(uid, request.getDeviceId(), validKey, maxAccess);
+                AccessUser user = userService.newUser(uid, request.getDeviceId(), validKey, maxAccess);
+                log.info("accept new connector for {}[{}]", user.getAlias(), user.getId());
             } catch (IOException e) {
                 log.error("create new user failed", e);
                 throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常");
@@ -80,7 +81,7 @@ public class ConnectController {
                 throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
             }
             return ok(uid, validKey);
-        }).doOnSuccess(rsp -> handler.update());
+        });
     }
 
     private boolean confirm(int maxAccess, ConnectRequest request, String host) {
@@ -108,13 +109,13 @@ public class ConnectController {
 
     private ConnectResponse ok(String id, String key) {
         ConnectResponse rsp = new ConnectResponse();
-        rsp.setSuccess(false);
+        rsp.setSuccess(true);
         rsp.setId(id);
         rsp.setValidKey(key);
         return rsp;
     }
 
-    private String generateId(String deviceId) {
-        return DigestUtils.sha256Hex(SystemUtil.getSystemKey() + deviceId).substring(0, 8);
+    private String generateId(String deviceId, String locate) {
+        return DigestUtils.sha256Hex(SystemUtil.getSystemKey() + ";" + deviceId + ";" + locate).substring(0, 8);
     }
 }
