@@ -84,23 +84,25 @@ public class SwapController {
     }
 
     @PostMapping("apply")
-    public Mono<ApplyResponse> apply(@RequestBody Mono<ApplyRequest> mono, ServerWebExchange exchange) {
+    public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request, ServerWebExchange exchange) {
         log.debug("receive apply request from '{}'", exchange.getRequest().getRemoteAddress());
         String ip = Objects.requireNonNull(exchange.getRequest().getRemoteAddress()).getAddress().getHostAddress();
 
-        return mono.doOnSubscribe(s -> {
+        boolean isPush = !"pull".equalsIgnoreCase(request.getType());
+        String itemType = isPush ? request.getType() : ClipUtil.getClipBeanType(ClipUtil.getClipBean());
+
+        return Mono.fromSupplier(() -> {
+            String accessKey = keyService.getKey(getSwapGroupKey(itemType, isPush));
+            return ApplyResponse.success(accessKey);
+        }).doFirst(() -> {
             if (!ipVerifier.accessible(ip)) {
                 log.info("unavailable ip: {}", ip);
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "未授予白名单");
             }
-        }).doOnNext(request -> {
-            if (!confirm(ip, request)) {
+            if (!confirm(ip, request, itemType, isPush)) {
                 log.debug("canceled the request: {}", JSONObject.toJSONString(request));
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
             }
-        }).map(request -> {
-            String accessKey = keyService.getKey(WinDropConfiguration.SWAP_GROUP);
-            return ApplyResponse.success(accessKey);
         });
     }
 
@@ -158,11 +160,12 @@ public class SwapController {
     public Mono<WindropResponse> getClipboard(@RequestBody WindropRequest request, ServerWebExchange exchange) {
         log.info("receive pull request from '{}'", exchange.getRequest().getRemoteAddress());
 
-        validPullRequest(request);
-
-        AccessUser user = prepareUser(request.getId());
         ClipBean clipBean = ClipUtil.getClipBean();
         String type = ClipUtil.getClipBeanType(clipBean);
+
+        validPullRequest(clipBean, request);
+
+        AccessUser user = prepareUser(request.getId());
 
         StringBuilder msgBuilder = new StringBuilder();
         return Mono.fromSupplier(() -> {
@@ -234,7 +237,7 @@ public class SwapController {
             msgBuilder.append("发送大文件到设备");
 
             return Mono.just(resp);
-        }).doOnSuccess(rsp -> systemNotify(type, msgBuilder.toString(), false));
+        }).doOnSuccess(s -> systemNotify(type, msgBuilder.toString(), false));
     }
 
     private File setFile2Clipboard(WindropRequest clipboardData, byte[] data) throws IOException {
@@ -268,16 +271,16 @@ public class SwapController {
         return file;
     }
 
-    private void validPullRequest(WindropRequest request) {
+    private void validPullRequest(ClipBean bean, WindropRequest request) {
         AccessUser user = prepareUser(request.getId());
-        if (!keyService.match(WinDropConfiguration.SWAP_GROUP, key -> Objects.equals(DigestUtils.sha256Hex(key + ";" + user.getValidKey()), request.getSign()))) {
+        if (!keyService.match(getSwapGroupKey(ClipUtil.getClipBeanType(bean), false), key -> Objects.equals(DigestUtils.sha256Hex(key + ";" + user.getValidKey()), request.getSign()))) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "权限校验失败");
         }
     }
 
     private void validPushRequest(WindropRequest request, byte[] data) {
         AccessUser user = prepareUser(request.getId());
-        if (!keyService.match(WinDropConfiguration.SWAP_GROUP, key -> Objects.equals(DigestUtils.sha256Hex(DigestUtils.sha256Hex(data) + ";" + key + ";" + user.getValidKey()), request.getSign()))) {
+        if (!keyService.match(getSwapGroupKey(request.getType(), true), key -> Objects.equals(DigestUtils.sha256Hex(DigestUtils.sha256Hex(data) + ";" + key + ";" + user.getValidKey()), request.getSign()))) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "权限校验失败");
         }
     }
@@ -304,32 +307,32 @@ public class SwapController {
         }
     }
 
-    private boolean confirm(String ip, ApplyRequest request) {
-        String type = request.getType();
-        ClipBean bean = ClipUtil.getClipBean();
-        AccessUser user = prepareUser(request.getId());
-        if (config.needConfirm(ClipUtil.getClipBeanType(bean), !type.equalsIgnoreCase("pull"))) {
+    private boolean confirm(String ip, ApplyRequest request, String itemType, boolean isPush) {
+        if (config.needConfirm(itemType, isPush)) {
             String msg;
-            switch (type) {
-                case "pull":
-                    String itemName;
-                    if (bean instanceof FileBean) {
-                        itemName = ((FileBean) bean).getFileName();
-                    } else {
-                        itemName = ClipUtil.getClipBeanTypeName(bean);
-                    }
-                    msg = "是否推送'" + itemName + "'到" + user.getAlias() + "?";
-                    break;
-                case "file":
-                case "image":
-                    msg = "是否接收来自" + user.getAlias() + "的文件/图片: " + request.getFilename() + "（" + request.getSize() + ")?";
-                    break;
-                case "text":
-                    msg = "是否接收来自" + user.getAlias() + "的文本?";
-                    break;
-                default:
-                    msg = "未定义请求: " + JSON.toJSONString(request);
-                    break;
+            AccessUser user = prepareUser(request.getId());
+            if (!isPush) {
+                ClipBean bean = ClipUtil.getClipBean();
+                String itemName;
+                if (bean instanceof FileBean) {
+                    itemName = ((FileBean) bean).getFileName();
+                } else {
+                    itemName = ClipUtil.getClipBeanTypeName(bean);
+                }
+                msg = "是否推送'" + itemName + "'到" + user.getAlias() + "?";
+            } else {
+                switch (itemType) {
+                    case "file":
+                    case "image":
+                        msg = "是否接收来自" + user.getAlias() + "的文件/图片: " + request.getFilename() + "（" + request.getSize() + ")?";
+                        break;
+                    case "text":
+                        msg = "是否接收来自" + user.getAlias() + "的文本?";
+                        break;
+                    default:
+                        msg = "未定义请求: " + JSON.toJSONString(request);
+                        break;
+                }
             }
             return WinDropApplication.WindropHandler.confirm("来自" + ip, msg);
         }
@@ -363,4 +366,11 @@ public class SwapController {
         return type;
     }
 
+    public String getSwapGroupKey(String itemType, boolean isPush) {
+        if (isPush) {
+            return String.join("_", WinDropConfiguration.SWAP_GROUP, "push", itemType);
+        } else {
+            return String.join("_", WinDropConfiguration.SWAP_GROUP, "pull", itemType);
+        }
+    }
 }

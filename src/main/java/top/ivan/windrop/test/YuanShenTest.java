@@ -8,9 +8,10 @@ package top.ivan.windrop.test;
 public class YuanShenTest {
     public static void main(String[] args) throws Exception {
         int round = 5000000;
-        test(round, 658, 1867, 606);
-        test(round, 717, 1967, 641);
-        test(round, 729, 2000, 575);
+        test(round, 4092, 11610, 606);
+        test(round, 4459, 12234, 641);
+        test(round, 4533, 12439, 575);
+        test(round, 4382, 11685, 629);
         test(round, 700, 1900, 700);
     }
 

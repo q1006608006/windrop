@@ -12,7 +12,7 @@ import top.ivan.windrop.util.SystemUtil;
 import java.util.Objects;
 
 import static top.ivan.windrop.WinDropConfiguration.CONNECT_GROUP;
-import static top.ivan.windrop.WinDropConfiguration.RANDOM_KEY_GROUP;
+import static top.ivan.windrop.WinDropConfiguration.RANDOM_SECURITY_KEY_GROUP;
 
 /**
  * @author Ivan
@@ -38,7 +38,7 @@ public class LocalConnectHandler {
         JSONObject option = new JSONObject();
         option.put("maxAccess", second);
         option.put("salt", IDUtil.getShortUuid());
-        String encryptData = ConvertUtil.encrypt(option.toJSONString(), keyService.getKey(RANDOM_KEY_GROUP, 90));
+        String encryptData = ConvertUtil.encrypt(option.toJSONString(), keyService.getKey(RANDOM_SECURITY_KEY_GROUP, 90));
         qrData.put("data", encryptData);
 
         String qrBody = qrData.toJSONString();
@@ -50,7 +50,7 @@ public class LocalConnectHandler {
     }
 
     public JSONObject getOption(String data) {
-        String body = ConvertUtil.decrypt(data, keyService.getKey(RANDOM_KEY_GROUP, 90));
+        String body = ConvertUtil.decrypt(data, keyService.getKey(RANDOM_SECURITY_KEY_GROUP, 90));
         return JSONObject.parseObject(body);
     }
 

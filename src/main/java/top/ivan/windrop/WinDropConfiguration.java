@@ -26,7 +26,7 @@ public class WinDropConfiguration {
     public static final String CONNECT_GROUP = "CONNECT";
     public static final String SWAP_GROUP = "SWAP";
     public static final String FILE_UPLOAD_GROUP = "FILE_UPLOAD";
-    public static final String RANDOM_KEY_GROUP = "RANDOM_KEY";
+    public static final String RANDOM_SECURITY_KEY_GROUP = "RANDOM_SECURITY_KEY";
 
     public static final String TEMP_FILE_PATH = "temp";
     public static final String UPLOAD_FILES_PATH = "recv";
