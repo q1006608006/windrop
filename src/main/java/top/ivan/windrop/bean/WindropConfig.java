@@ -34,12 +34,12 @@ public class WindropConfig {
     private List<String> confirm;
     private long fileExpiredSecond;
 
-    public boolean needNotify(String type, boolean push) {
+    public boolean needNotify(String type, boolean isPush) {
         if (null == notify) {
             return false;
         }
         String iType = type.toLowerCase();
-        return notify.stream().map(String::toLowerCase).anyMatch(s -> s.equals("*") || s.equals(iType) || s.equals(push ? "push.*" : "pull.*") || s.equals((push ? "push." : "pull.") + iType));
+        return notify.stream().map(String::toLowerCase).anyMatch(s -> s.equals("*") || s.equals(iType) || s.equals(isPush ? "isPush.*" : "pull.*") || s.equals((isPush ? "isPush." : "pull.") + iType));
     }
 
     public boolean needConfirm(String type, boolean push) {
