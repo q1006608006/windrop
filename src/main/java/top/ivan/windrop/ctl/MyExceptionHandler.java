@@ -22,7 +22,7 @@ public class MyExceptionHandler {
     public ResponseEntity<Map<String, Object>> exceptionHandler(Exception e) throws Exception {
         Map<String, Object> data = new HashMap<>();
         data.put("success", false);
-        data.put("message", e.getMessage());
+        data.put("message", e.getMessage() == null ? e.getClass().getName() : e.getMessage());
 
         HttpStatus status;
         if (e instanceof HttpClientErrorException) {
