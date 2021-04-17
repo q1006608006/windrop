@@ -38,6 +38,11 @@
             <directory>src/main/resources</directory>
             <outputDirectory>conf</outputDirectory>
             <filtered>false</filtered>
+            <excludes>
+                <exclude>static/</exclude>
+                <exclude>templates/</exclude>
+                <exclude>application.yml</exclude>
+            </excludes>
         </fileSet>
 
         <!--    外部依赖jar包放置于./libs文件夹    -->
