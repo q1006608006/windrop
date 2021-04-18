@@ -41,6 +41,12 @@ public class ConnectController {
     @Autowired
     private LocalConnectHandler handler;
 
+    /**
+     * 与windrop创建连接
+     * @param mono 连接请求
+     * @param exchange web请求信息
+     * @return 连接windrop的id和validKey
+     */
     @PostMapping("connect")
     public Mono<ConnectResponse> connect(@RequestBody Mono<ConnectRequest> mono, ServerWebExchange exchange) {
         InetSocketAddress remoteAddress = exchange.getRequest().getRemoteAddress();

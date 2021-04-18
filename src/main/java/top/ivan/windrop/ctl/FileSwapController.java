@@ -84,7 +84,7 @@ public class FileSwapController {
     @ResponseBody
     @PostMapping("/upload")
     public Mono<CommonResponse> fileUpload(@RequestPart("file") Mono<FilePart> mono, @RequestPart("hidden") String hidden) {
-        return mono.doFirst(() -> {
+        return mono.doOnRequest(id -> {
             if (!keyService.match(WinDropConfiguration.FILE_UPLOAD_GROUP, k -> k.equals(hidden))) {
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
             }
