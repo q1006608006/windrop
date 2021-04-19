@@ -28,7 +28,7 @@ import java.net.InetSocketAddress;
 
 /**
  * @author Ivan
- * @description
+ * @description 设备连接windrop的控制器
  * @date 2021/2/5
  */
 @Slf4j
@@ -36,14 +36,22 @@ import java.net.InetSocketAddress;
 @RequestMapping("/windrop/auth")
 public class ConnectController {
 
+    /**
+     * 用户（可连接设备）服务
+     */
     @Autowired
     private PersistUserService userService;
+
+    /**
+     * 与本控制器共享数据的handler
+     */
     @Autowired
     private LocalConnectHandler handler;
 
     /**
-     * 与windrop创建连接
-     * @param mono 连接请求
+     * 与windrop创建连接或更新连接
+     *
+     * @param mono     连接请求
      * @param exchange web请求信息
      * @return 连接windrop的id和validKey
      */
@@ -53,11 +61,13 @@ public class ConnectController {
         log.info("receive decrypt request from '{}'", remoteAddress);
 
         return mono.doOnNext(request -> {
+            // 校验参数
             if (StringUtils.isEmpty(request.getDeviceId())
                     || StringUtils.isEmpty(request.getSign())
                     || StringUtils.isEmpty(request.getData())) {
                 throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
             }
+            // 验证设备有效性(sha256(wifi名称,设备ID,randomKey,核验密钥))
             if (!handler.match(request.getLocate(), request.getDeviceId(), request.getSign())) {
                 log.info("valid failed, reject it");
                 throw new HttpClientException(HttpStatus.UNAUTHORIZED, "未通过核验");
@@ -66,17 +76,22 @@ public class ConnectController {
             JSONObject option;
             Integer maxAccess;
             try {
+                // 解密二维码附带加密数据
                 option = handler.getOption(request.getData());
+                // 获取最大连接时间
                 maxAccess = option.getInteger("maxAccess");
             } catch (Exception e) {
                 throw new HttpClientException(HttpStatus.BAD_REQUEST, "数据无效或过期");
             }
+            // 弹窗确认是否同意连接
             if (!confirm(maxAccess, request, remoteAddress.getAddress().getHostAddress())) {
                 return failure("拒绝连接");
             }
+            // 生成设备ID及验证密钥
             String uid = generateId(request.getDeviceId(), request.getLocate());
             String validKey = IDUtil.get32UUID();
             try {
+                // 创建并持久化用户信息
                 AccessUser user = userService.newUser(uid, request.getDeviceId(), validKey, maxAccess);
                 log.info("accept new connector for {}[{}]", user.getAlias(), user.getId());
             } catch (IOException e) {
@@ -86,6 +101,7 @@ public class ConnectController {
                 log.error("init user failed with option: " + option, e);
                 throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
             }
+            // 返回
             return ok(uid, validKey);
         });
     }
@@ -121,6 +137,12 @@ public class ConnectController {
         return rsp;
     }
 
+    /**
+     * 生成用户id（非随机）
+     * @param deviceId 设备名称
+     * @param locate 一般为wifi名称
+     * @return 用户ID
+     */
     private String generateId(String deviceId, String locate) {
         return DigestUtils.sha256Hex(SystemUtil.getSystemKey() + ";" + deviceId + ";" + locate).substring(0, 8);
     }

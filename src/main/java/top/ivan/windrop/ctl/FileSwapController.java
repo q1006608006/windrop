@@ -1,5 +1,6 @@
 package top.ivan.windrop.ctl;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -7,15 +8,19 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.WinDropConfiguration;
+import top.ivan.windrop.bean.AccessUser;
+import top.ivan.windrop.bean.ApplyResponse;
 import top.ivan.windrop.bean.CommonResponse;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
+import top.ivan.windrop.svc.IPVerifier;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.RandomAccessKeyService;
 import top.ivan.windrop.svc.ResourceSharedService;
@@ -25,6 +30,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -32,9 +38,12 @@ import java.util.Optional;
  * @description
  * @date 2021/3/15
  */
+@Slf4j
 @Controller
 @RequestMapping("/windrop/addition")
 public class FileSwapController {
+    public static final String FILE_UPLOAD_APPLY_GROUP = "FILE_UPLOAD_APPLY";
+    public static final String FILE_UPLOAD_GROUP = "FILE_UPLOAD";
 
     @Autowired
     private ResourceSharedService resourceSharedService;
@@ -42,6 +51,8 @@ public class FileSwapController {
     private RandomAccessKeyService keyService;
     @Autowired
     private PersistUserService userService;
+    @Autowired
+    private IPVerifier ipVerifier;
 
     @ResponseBody
     @GetMapping(value = "download/{key}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -63,29 +74,38 @@ public class FileSwapController {
         });
     }
 
-    @GetMapping("/upload")
-    public Mono<String> uploadModel(@RequestParam String key, @RequestParam String id, Model model) {
-        return Mono.fromSupplier(() -> {
-            try {
-                return userService.findUser(id);
-            } catch (IOException e) {
-                throw new HttpServerException("数据服务异常");
-            }
-        }).doOnNext(user -> {
-            if (!keyService.match(WinDropConfiguration.SWAP_GROUP, k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + k).equals(key))) {
-                throw new HttpClientException(HttpStatus.FORBIDDEN, "核验未通过");
-            }
-        }).map(user -> {
-            model.addAttribute("hidden", keyService.getKey(WinDropConfiguration.FILE_UPLOAD_GROUP, 3 * 60));
-            return "upload";
-        });
+    /**
+     * 获取上传请求accessKey，非幂等，使用POST请求
+     * @param req http请求信息
+     * @return {@link ApplyResponse}
+     */
+    @ResponseBody
+    @PostMapping("upload/apply")
+    public Mono<ApplyResponse> uploadApply(ServerHttpRequest req) {
+        return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)))
+                .doOnSubscribe(s -> verifyIp(Objects.requireNonNull(req.getRemoteAddress()).getAddress().getHostAddress()));
     }
 
     @ResponseBody
-    @PostMapping("/upload")
+    @PostMapping("upload/request")
+    public Mono<ApplyResponse> uploadRequest(ServerHttpRequest req) {
+        return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)))
+                .doOnSubscribe(s -> verifyIp(Objects.requireNonNull(req.getRemoteAddress()).getAddress().getHostAddress()));
+    }
+
+    @GetMapping("upload")
+    public Mono<String> uploadModel(@RequestParam String key, @RequestParam String id, Model model) {
+        return Mono.just(prepareUser(id))
+                .doOnNext(user -> validApply(key, user))
+                .doOnNext(user -> model.addAttribute("hidden", keyService.getKey(FILE_UPLOAD_GROUP, 3 * 60)))
+                .thenReturn("success");
+    }
+
+    @ResponseBody
+    @PostMapping("upload")
     public Mono<CommonResponse> fileUpload(@RequestPart("file") Mono<FilePart> mono, @RequestPart("hidden") String hidden) {
         return mono.doOnRequest(id -> {
-            if (!keyService.match(WinDropConfiguration.FILE_UPLOAD_GROUP, k -> k.equals(hidden))) {
+            if (!keyService.match(FILE_UPLOAD_GROUP, k -> k.equals(hidden))) {
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
             }
         }).doOnNext(fp -> {
@@ -95,5 +115,34 @@ public class FileSwapController {
         }).map(fp -> CommonResponse.success("上传成功"));
 //        System.out.println("receive hidden: " + hidden);
 //        return mono.doOnNext(p -> System.out.println(p.filename())).map(f -> Collections.singletonMap("t", "1"));
+    }
+
+    private AccessUser prepareUser(String id) {
+        try {
+            AccessUser user = userService.findUser(id);
+            if (null == user) {
+                throw new HttpClientException(HttpStatus.UNAUTHORIZED, "未验证的设备(id: " + id + ")");
+            }
+            if (user.isExpired()) {
+                throw new HttpClientException(HttpStatus.UNAUTHORIZED, "使用许可已过期");
+            }
+            return user;
+        } catch (IOException e) {
+            log.error("加载用户数据失败", e);
+            throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常");
+        }
+    }
+
+    private void validApply(String key, AccessUser user) {
+        if (!keyService.match(FILE_UPLOAD_APPLY_GROUP, k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + k).equals(key))) {
+            throw new HttpClientException(HttpStatus.FORBIDDEN, "核验未通过");
+        }
+    }
+
+    private void verifyIp(String ip) {
+        if (!ipVerifier.accessible(ip)) {
+            log.info("unavailable ip: {}", ip);
+            throw new HttpClientException(HttpStatus.FORBIDDEN, "未授予白名单");
+        }
     }
 }

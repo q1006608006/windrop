@@ -5,11 +5,11 @@ import lombok.EqualsAndHashCode;
 
 /**
  * @author Ivan
- * @description
+ * @description 申请请求响应数据结构
  * @date 2021/1/14
  */
-@EqualsAndHashCode(callSuper = true)
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class ApplyResponse extends CommonResponse{
     private String accessKey;
 
