@@ -86,19 +86,20 @@ public class FileSwapController {
                 .doOnSubscribe(s -> verifyIp(Objects.requireNonNull(req.getRemoteAddress()).getAddress().getHostAddress()));
     }
 
-    @ResponseBody
-    @PostMapping("upload/request")
-    public Mono<ApplyResponse> uploadRequest(ServerHttpRequest req) {
-        return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)))
-                .doOnSubscribe(s -> verifyIp(Objects.requireNonNull(req.getRemoteAddress()).getAddress().getHostAddress()));
-    }
-
     @GetMapping("upload")
     public Mono<String> uploadModel(@RequestParam String key, @RequestParam String id, Model model) {
         return Mono.just(prepareUser(id))
                 .doOnNext(user -> validApply(key, user))
                 .doOnNext(user -> model.addAttribute("hidden", keyService.getKey(FILE_UPLOAD_GROUP, 3 * 60)))
                 .thenReturn("success");
+    }
+
+    @ResponseBody
+    @PostMapping("upload/request")
+    public Mono<ApplyResponse> uploadRequest(ServerHttpRequest req) {
+        //todo
+        return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)))
+                .doOnSubscribe(s -> verifyIp(Objects.requireNonNull(req.getRemoteAddress()).getAddress().getHostAddress()));
     }
 
     @ResponseBody

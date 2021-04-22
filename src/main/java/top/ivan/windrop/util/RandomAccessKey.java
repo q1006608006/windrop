@@ -40,8 +40,9 @@ public class RandomAccessKey {
     public String getAccessKey() {
         if (isTimeout()) {
             untilUpdated();
+        } else {
+            waitUpdate();
         }
-        waitUpdate();
         return accessKey;
     }
 
@@ -53,15 +54,26 @@ public class RandomAccessKey {
 
         Object oldKey = accessKey;
         while (true) {
-            if (oldKey != accessKey) {
-                return false;
-            }
             if (inCompare.compareAndSet(false, true)) {
+                if (oldKey != accessKey) {
+                    return false;
+                }
+                if (isTimeout()) {
+                    tryUpdate();
+                    return false;
+                }
+                long curLastUpdateTime = lastUpdateTime;
                 try {
                     boolean status = false;
                     if (predicate.test(accessKey)) {
                         if (matchThenUpdate) {
-                            untilUpdated();
+//                            untilUpdated();
+                            if (isUpdate.compareAndSet(false, true)) {
+                                if (curLastUpdateTime == lastUpdateTime) {
+                                    lastUpdateTime = curLastUpdateTime - intervalMillis - 1;
+                                }
+                                isUpdate.set(false);
+                            }
                         }
                         status = true;
                     }

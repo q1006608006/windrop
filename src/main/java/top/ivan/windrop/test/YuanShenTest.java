@@ -12,7 +12,9 @@ public class YuanShenTest {
         test(round, 4459, 12234, 641);
         test(round, 4533, 12439, 575);
         test(round, 4382, 11685, 629);
-        test(round, 700, 1900, 700);
+        test(round, 5007, 13172, 601);
+        test(round, 5107, 13972, 630);
+//        test(round, 700, 1900, 700);
     }
 
     private static void test(int round, long minA, long maxA, int rga) {
