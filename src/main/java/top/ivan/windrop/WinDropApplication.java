@@ -12,9 +12,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Hooks;
 import top.ivan.windrop.bean.WindropConfig;
-import top.ivan.windrop.svc.LocalConnectHandler;
+import top.ivan.windrop.svc.LocalQRConnectHandler;
+import top.ivan.windrop.svc.LocalQRFileSharedHandler;
 import top.ivan.windrop.svc.PersistUserService;
-import top.ivan.windrop.svc.QrCodeControllerService;
 import top.ivan.windrop.tray.WindropSystemTray;
 
 import javax.swing.*;
@@ -78,11 +78,11 @@ public class WinDropApplication {
             @Autowired
             private WindropConfig config;
             @Autowired
-            private QrCodeControllerService qrCodeService;
-            @Autowired
             private PersistUserService userService;
             @Autowired
-            private LocalConnectHandler connectHandler;
+            private LocalQRConnectHandler connectHandler;
+            @Autowired
+            private LocalQRFileSharedHandler fileSharedService;
         }
 
         public WindropHandler(String[] args, SpringApplication application) {
@@ -222,7 +222,7 @@ public class WinDropApplication {
             } else {
                 return;
             }
-            String qrKey = beanHandler.qrCodeService.sharedFile(selectorFile, 5, 300);
+            String qrKey = beanHandler.fileSharedService.sharedFile(selectorFile, 5, 300);
             try {
                 Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/code/" + qrKey));
             } catch (URISyntaxException | IOException e) {

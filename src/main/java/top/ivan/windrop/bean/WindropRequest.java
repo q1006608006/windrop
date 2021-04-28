@@ -19,7 +19,7 @@ public class WindropRequest {
     /**
      * 推送的文件名称
      */
-    private String fileName;
+    private String filename;
 
     /**
      * 推送的文件后缀名称

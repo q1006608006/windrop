@@ -301,7 +301,7 @@ public class SwapController {
      */
     private File setFile2Clipboard(WindropRequest clipboardData, byte[] data) throws IOException {
         // 获取文件信息
-        String name = formatName(clipboardData.getFileName());
+        String name = formatName(clipboardData.getFilename());
         String suffix = StringUtils.isEmpty(clipboardData.getFileSuffix()) ? "" : "." + clipboardData.getFileSuffix();
 
         // 创建临时文件
@@ -322,7 +322,7 @@ public class SwapController {
      */
     private File setImage2Clipboard(WindropRequest clipboardData, byte[] data) throws IOException {
         // 获取图片文件信息
-        String name = formatName(clipboardData.getFileName());
+        String name = formatName(clipboardData.getFilename());
         String suffix = "." + (StringUtils.isEmpty(clipboardData.getFileSuffix()) ? getImageType(data) : clipboardData.getFileSuffix());
 
         // 创建临时文件
@@ -403,7 +403,7 @@ public class SwapController {
         WindropResponse response = new WindropResponse();
         response.setData(data);
         response.setType(type);
-        response.setFileName(fileName);
+        response.setFilename(fileName);
         response.setServerUpdateTime(clipBean.getUpdateTime());
         response.setSign(sign);
 

@@ -32,9 +32,6 @@ public class QrCodeControllerService {
     private final ChallengeKeys challengeKeys = new ChallengeKeys(256);
 
     @Autowired
-    private ResourceSharedService sharedService;
-
-    @Autowired
     private ScheduledService scheduledService;
 
     public String register(Function<String, String> supplier, int count, int second) {
@@ -59,17 +56,6 @@ public class QrCodeControllerService {
                 scheduledService.schedule(() -> challengeKeys.remove(key, task), 1, TimeUnit.MINUTES);
             }
         }, second, TimeUnit.SECONDS);
-    }
-
-    public String sharedFile(File file, int count, int second) {
-        String sharedKey = IDUtil.getShortUuid();
-        sharedService.register(sharedKey, file, count, second);
-        JSONObject obj = new JSONObject();
-        obj.put("support", "file");
-        obj.put("code", sharedKey);
-        String qrCodeBody = obj.toJSONString();
-        log.info("share file[{}] with key '{}'", file.getName(), sharedKey);
-        return register(key -> qrCodeBody, count, second);
     }
 
     public String getData(String key) throws CacheNotFoundException, CacheNotAccessException, CacheTimeoutException {

@@ -53,7 +53,7 @@ public class ResourceSharedService {
         scheduleRemove(key, cachedSecond);
     }
 
-    public void scheduleRemove(String key, int second) {
+    private void scheduleRemove(String key, int second) {
         if (second < 0) {
             second = 60;
         }

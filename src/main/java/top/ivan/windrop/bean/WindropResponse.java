@@ -29,7 +29,7 @@ public class WindropResponse extends CommonResponse {
     /**
      * 文件数据的文件名
      */
-    private String fileName;
+    private String filename;
 
     /**
      * 数据签名（sha256）

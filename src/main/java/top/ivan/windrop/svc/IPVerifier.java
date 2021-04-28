@@ -34,11 +34,11 @@ public class IPVerifier {
             List<String> lines = Files.readAllLines(watchedFile.getPath());
             List<String> newAccessList = new ArrayList<>();
             for (String line : lines) {
-                if (!line.contains("/")) {
+                if (!line.contains(">")) {
                     newAccessList.add(line);
                 } else {
-                    String start = line.substring(0, line.indexOf('/'));
-                    int length = Integer.parseInt(line.substring(line.indexOf('/') + 1));
+                    String start = line.substring(0, line.indexOf('>'));
+                    int length = Integer.parseInt(line.substring(line.indexOf('>') + 1));
                     String zone = start.replaceAll("(\\d+\\.\\d+\\.\\d+)\\.(\\d+)", "$1");
                     int pos = Integer.parseInt(start.replaceAll("(\\d+\\.\\d+\\.\\d+)\\.(\\d+)", "$2"));
                     for (int i = 0; i < length; i++) {

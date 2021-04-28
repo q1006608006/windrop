@@ -20,7 +20,7 @@ import static top.ivan.windrop.WinDropConfiguration.RANDOM_SECURITY_KEY_GROUP;
  * @date 2021/3/31
  */
 @Service
-public class LocalConnectHandler {
+public class LocalQRConnectHandler {
 
     @Autowired
     private QrCodeControllerService qrCodeService;

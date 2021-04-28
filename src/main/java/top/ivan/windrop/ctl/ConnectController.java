@@ -18,7 +18,7 @@ import top.ivan.windrop.bean.ConnectRequest;
 import top.ivan.windrop.bean.ConnectResponse;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
-import top.ivan.windrop.svc.LocalConnectHandler;
+import top.ivan.windrop.svc.LocalQRConnectHandler;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.util.IDUtil;
 import top.ivan.windrop.util.SystemUtil;
@@ -46,7 +46,7 @@ public class ConnectController {
      * 与本控制器共享数据的handler
      */
     @Autowired
-    private LocalConnectHandler handler;
+    private LocalQRConnectHandler handler;
 
     /**
      * 与windrop创建连接或更新连接
