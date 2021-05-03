@@ -30,8 +30,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Objects;
 import java.util.Optional;
+
+import static top.ivan.windrop.util.SpringUtil.getIP;
 
 /**
  * @author Ivan
@@ -76,36 +77,38 @@ public class FileSwapController {
 
     /**
      * 获取上传请求accessKey，非幂等，使用POST请求
+     *
      * @param req http请求信息
      * @return {@link ApplyResponse}
      */
     @ResponseBody
     @PostMapping("upload/apply")
     public Mono<ApplyResponse> uploadApply(ServerHttpRequest req) {
-        return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)))
-                .doOnSubscribe(s -> verifyIp(Objects.requireNonNull(req.getRemoteAddress()).getAddress().getHostAddress()));
+        verifyIp(req);
+        return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)));
     }
 
     @GetMapping("upload")
-    public Mono<String> uploadModel(@RequestParam String key, @RequestParam String id, Model model) {
-        return Mono.just(prepareUser(id))
-                .doOnNext(user -> validApply(key, user))
-                .doOnNext(user -> model.addAttribute("hidden", keyService.getKey(FILE_UPLOAD_GROUP, 3 * 60)))
+    public Mono<String> uploadModel(@RequestParam String key, @RequestParam String id, Mono<Model> mono) {
+        AccessUser user = prepareUser(id);
+        validApply(key, user);
+
+        return mono.doOnNext(model -> model.addAttribute("hidden", keyService.getKey(FILE_UPLOAD_GROUP, 3 * 60)))
                 .thenReturn("success");
     }
 
     @ResponseBody
     @PostMapping("upload/request")
     public Mono<ApplyResponse> uploadRequest(ServerHttpRequest req) {
+        verifyIp(req);
         //todo
-        return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)))
-                .doOnSubscribe(s -> verifyIp(Objects.requireNonNull(req.getRemoteAddress()).getAddress().getHostAddress()));
+        return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)));
     }
 
     @ResponseBody
     @PostMapping("upload")
     public Mono<CommonResponse> fileUpload(@RequestPart("file") Mono<FilePart> mono, @RequestPart("hidden") String hidden) {
-        return mono.doOnRequest(id -> {
+        return mono.doFirst(() -> {
             if (!keyService.match(FILE_UPLOAD_GROUP, k -> k.equals(hidden))) {
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
             }
@@ -113,7 +116,7 @@ public class FileSwapController {
             String fn = fp.filename();
             Path p = Paths.get(WinDropConfiguration.UPLOAD_FILES_PATH, fn);
             fp.transferTo(p);
-        }).map(fp -> CommonResponse.success("上传成功"));
+        }).thenReturn(CommonResponse.success("上传成功"));
 //        System.out.println("receive hidden: " + hidden);
 //        return mono.doOnNext(p -> System.out.println(p.filename())).map(f -> Collections.singletonMap("t", "1"));
     }
@@ -140,7 +143,8 @@ public class FileSwapController {
         }
     }
 
-    private void verifyIp(String ip) {
+    private void verifyIp(ServerHttpRequest request) {
+        String ip = getIP(request);
         if (!ipVerifier.accessible(ip)) {
             log.info("unavailable ip: {}", ip);
             throw new HttpClientException(HttpStatus.FORBIDDEN, "未授予白名单");

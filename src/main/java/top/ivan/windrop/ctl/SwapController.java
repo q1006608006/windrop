@@ -122,14 +122,19 @@ public class SwapController {
     public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request, ServerHttpRequest shr) {
         log.debug("receive apply request from '{}'", shr.getRemoteAddress());
 
+        // 验证ip
+        verifyIp(shr);
+
         // 判断请求类型
         boolean isPush = !"pull".equalsIgnoreCase(request.getType());
         // 判断申请的资源类型
         String itemType = isPush ? request.getType() : ClipUtil.getClipBeanType(ClipUtil.getClipBean());
 
-        return Mono.fromSupplier(() -> ApplyResponse.success(keyService.getKey(getSwapGroupKey(itemType, isPush))))  // 返回随机密钥,用于签名
-                .doOnSubscribe(s -> verifyIp(shr)) // 验证ip
-                .doOnRequest(s -> confirm(shr, request, itemType, isPush)); // PC上确认是否接收
+        // PC上确认是否接收
+        confirm(shr, request, itemType, isPush);
+
+        // 返回随机密钥,用于签名
+        return Mono.just(ApplyResponse.success(keyService.getKey(getSwapGroupKey(itemType, isPush))));
     }
 
     /**
@@ -142,6 +147,9 @@ public class SwapController {
     @PostMapping("push")
     public Mono<CommonResponse> setClipboard(@RequestBody WindropRequest request, ServerHttpRequest shr) {
         log.info("receive push request from '{}'", shr.getRemoteAddress());
+
+        // 验证ip
+        verifyIp(shr);
 
         // 校验data
         byte[] data;
@@ -156,12 +164,17 @@ public class SwapController {
         // 获取用户（设备）信息
         AccessUser user = prepareUser(request.getId());
 
-        // 拼接消息
+        // 验证签名
+        validPushRequest(user, request, data);
+
+
         StringBuilder successMsg = new StringBuilder();
-        return Mono.fromRunnable(() -> set2Clipboard(request, data, user, successMsg)) // 更新剪贴板内容
-                .doOnSubscribe(s -> verifyIp(shr)) // 验证ip
-                .doOnRequest(req -> validPushRequest(user, request, data)) // 验证签名
-                .thenReturn(CommonResponse.success("更新成功")) // 返回成功结果
+
+        // 更新剪贴板内容
+        set2Clipboard(request, data, user, successMsg);
+
+        // 返回成功结果
+        return Mono.just(CommonResponse.success("更新成功"))
                 .doOnSuccess(rsp -> systemNotify(request.getType(), successMsg.toString(), true)); // 请求完成后发起系统通知
     }
 
@@ -176,17 +189,23 @@ public class SwapController {
     public Mono<WindropResponse> getClipboard(@RequestBody WindropRequest request, ServerHttpRequest shr) {
         log.info("receive pull request from '{}'", shr.getRemoteAddress());
 
+        // 验证ip
+        verifyIp(shr);
+
         // 用户（设备）信息
         AccessUser user = prepareUser(request.getId());
-        // 剪贴板信息
+
+        // 获取剪贴板信息
         ClipBean clipBean = ClipUtil.getClipBean();
 
-        // 拼接消息
+        // 验证签名
+        validPullRequest(user, request, ClipUtil.getClipBeanType(clipBean));
+
         StringBuilder successMsg = new StringBuilder();
-        return Mono.fromSupplier(() -> prepareWindropResponse(clipBean, user, successMsg)) // 获取剪切板内容
-                .onErrorResume(LengthTooLargeException.class, e -> Mono.just(prepareRedirectResponse(clipBean, user, successMsg))) // 当数据文件过大采用大文件下载方式
-                .doOnSubscribe(s -> verifyIp(shr)) // 验证ip
-                .doOnRequest(req -> validPullRequest(user, request, ClipUtil.getClipBeanType(clipBean))) // 验证签名
+
+        // 返回封装的内容
+        return Mono.fromSupplier(() -> prepareWindropResponse(clipBean, user, successMsg)) // 封装剪切板内容
+                .onErrorResume(LengthTooLargeException.class, e -> Mono.just(prepareRedirectResponse(clipBean, user, successMsg))) // 当数据文件过大返回转浏览器下载协议
                 .doOnSuccess(s -> systemNotify(s.getType(), successMsg.toString(), false)); // 请求完成后发起系统通知
     }
 

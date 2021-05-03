@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -52,12 +53,12 @@ public class ConnectController {
      * 与windrop创建连接或更新连接
      *
      * @param mono     连接请求
-     * @param exchange web请求信息
+     * @param shr web请求信息
      * @return 连接windrop的id和validKey
      */
     @PostMapping("connect")
-    public Mono<ConnectResponse> connect(@RequestBody Mono<ConnectRequest> mono, ServerWebExchange exchange) {
-        InetSocketAddress remoteAddress = exchange.getRequest().getRemoteAddress();
+    public Mono<ConnectResponse> connect(@RequestBody Mono<ConnectRequest> mono, ServerHttpRequest shr) {
+        InetSocketAddress remoteAddress = shr.getRemoteAddress();
         log.info("receive decrypt request from '{}'", remoteAddress);
 
         return mono.doOnNext(request -> {
@@ -72,13 +73,14 @@ public class ConnectController {
                 log.info("valid failed, reject it");
                 throw new HttpClientException(HttpStatus.UNAUTHORIZED, "未通过核验");
             }
-        }).map(request -> {
+        }).map(request -> { //创建用户
+            // 连接参数
             JSONObject option;
+            // 连接有效期
             Integer maxAccess;
             try {
-                // 解密二维码附带加密数据
+                // 解密二维码附带加密数据（连接参数）
                 option = handler.getOption(request.getData());
-                // 获取最大连接时间
                 maxAccess = option.getInteger("maxAccess");
             } catch (Exception e) {
                 throw new HttpClientException(HttpStatus.BAD_REQUEST, "数据无效或过期");
@@ -94,6 +96,9 @@ public class ConnectController {
                 // 创建并持久化用户信息
                 AccessUser user = userService.newUser(uid, request.getDeviceId(), validKey, maxAccess);
                 log.info("accept new connector for {}[{}]", user.getAlias(), user.getId());
+
+                // 返回成功
+                return ok(uid, validKey);
             } catch (IOException e) {
                 log.error("create new user failed", e);
                 throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常");
@@ -101,8 +106,6 @@ public class ConnectController {
                 log.error("init user failed with option: " + option, e);
                 throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
             }
-            // 返回
-            return ok(uid, validKey);
         });
     }
 
