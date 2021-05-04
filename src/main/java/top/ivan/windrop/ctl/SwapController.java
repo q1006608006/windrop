@@ -123,7 +123,7 @@ public class SwapController {
         log.debug("receive apply request from '{}'", shr.getRemoteAddress());
 
         // 验证ip
-        verifyIp(shr);
+//        verifyIp(shr);
 
         // 判断请求类型
         boolean isPush = !"pull".equalsIgnoreCase(request.getType());

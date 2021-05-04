@@ -84,7 +84,7 @@ public class FileSwapController {
     @ResponseBody
     @PostMapping("upload/apply")
     public Mono<ApplyResponse> uploadApply(ServerHttpRequest req) {
-        verifyIp(req);
+//        verifyIp(req);
         return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)));
     }
 
@@ -117,8 +117,6 @@ public class FileSwapController {
             Path p = Paths.get(WinDropConfiguration.UPLOAD_FILES_PATH, fn);
             fp.transferTo(p);
         }).thenReturn(CommonResponse.success("上传成功"));
-//        System.out.println("receive hidden: " + hidden);
-//        return mono.doOnNext(p -> System.out.println(p.filename())).map(f -> Collections.singletonMap("t", "1"));
     }
 
     private AccessUser prepareUser(String id) {
