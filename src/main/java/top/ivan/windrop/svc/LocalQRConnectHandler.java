@@ -9,6 +9,8 @@ import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
 import top.ivan.windrop.util.SystemUtil;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import static top.ivan.windrop.WinDropConfiguration.CONNECT_GROUP;
@@ -32,7 +34,9 @@ public class LocalQRConnectHandler {
     public String newConnect(int second) {
         JSONObject qrData = new JSONObject();
         qrData.put("type", "connect");
-        qrData.put("ipList", SystemUtil.getLocalIPList());
+        List<String> ipList = new ArrayList<>(SystemUtil.getLocalIPList());
+        ipList.remove("127.0.0.1");
+        qrData.put("ipList", ipList);
         qrData.put("token", keyService.getKey(CONNECT_GROUP));
         qrData.put("port", config.getPort());
         JSONObject option = new JSONObject();

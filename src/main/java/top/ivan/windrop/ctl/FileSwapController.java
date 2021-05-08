@@ -76,7 +76,7 @@ public class FileSwapController {
     }
 
     /**
-     * 获取上传请求accessKey，非幂等，使用POST请求
+     * 获取上传请求accessKey，周期内幂等，使用POST请求
      *
      * @param req http请求信息
      * @return {@link ApplyResponse}

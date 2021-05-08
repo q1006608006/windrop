@@ -26,54 +26,48 @@ public class RandomAccessKey {
         return false;
     }
 
-    private void untilUpdated() {
+    private void syncUpdate() {
         if (!tryUpdate()) waitUpdate();
     }
 
     private void waitUpdate() {
-        Object oldKey = accessKey;
-        if (isUpdate.get()) {
-            while (oldKey == accessKey) ;
+        while (isUpdate.get()) ;
+    }
+
+    private void setExpired(long compareTime) {
+        if (isUpdate.compareAndSet(false, true)) {
+            if (compareTime == lastUpdateTime) {
+                lastUpdateTime = compareTime - intervalMillis - 1;
+            }
+            isUpdate.set(false);
         }
     }
 
     public String getAccessKey() {
+        waitUpdate();
         if (isTimeout()) {
-            untilUpdated();
-        } else {
-            waitUpdate();
+            syncUpdate();
         }
         return accessKey;
     }
 
-    public boolean match(Predicate<String> predicate, boolean matchThenUpdate) {
+    public boolean match(Predicate<String> predicate, boolean matchThenExpired) {
         if (isTimeout()) {
             tryUpdate();
             return false;
         }
 
-        Object oldKey = accessKey;
         while (true) {
             if (inCompare.compareAndSet(false, true)) {
-                if (oldKey != accessKey) {
-                    return false;
-                }
-                if (isTimeout()) {
-                    tryUpdate();
-                    return false;
-                }
                 long curLastUpdateTime = lastUpdateTime;
+                if (isUpdate.get() || isTimeout()) {
+                    return false;
+                }
                 try {
                     boolean status = false;
                     if (predicate.test(accessKey)) {
-                        if (matchThenUpdate) {
-//                            untilUpdated();
-                            if (isUpdate.compareAndSet(false, true)) {
-                                if (curLastUpdateTime == lastUpdateTime) {
-                                    lastUpdateTime = curLastUpdateTime - intervalMillis - 1;
-                                }
-                                isUpdate.set(false);
-                            }
+                        if (matchThenExpired) {
+                            setExpired(curLastUpdateTime);
                         }
                         status = true;
                     }

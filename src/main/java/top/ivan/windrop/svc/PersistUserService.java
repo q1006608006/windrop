@@ -48,7 +48,7 @@ public class PersistUserService {
         accessUser.setValidKey(validKey);
         accessUser.setAccessTime(System.currentTimeMillis());
         if (maxSecond > -1) {
-            accessUser.setExpireTime(accessUser.getAccessTime() + maxSecond * 1000);
+            accessUser.setExpireTime(accessUser.getAccessTime() + maxSecond * 1000L);
         } else {
             accessUser.setExpireTime(-1);
         }

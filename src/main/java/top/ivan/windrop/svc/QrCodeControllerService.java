@@ -48,7 +48,7 @@ public class QrCodeControllerService {
             second = 60;
         }
         AtomicInteger counter = new AtomicInteger(count);
-        ChallengeKeys.ChallengeTask task = challengeKeys.registerKey(key, second * 1000, t -> counter.decrementAndGet() > -1);
+        ChallengeKeys.ChallengeTask task = challengeKeys.registerKey(key, second * 1000L, t -> counter.decrementAndGet() > -1);
         dataSupplierMap.put(key, supplier);
 
         scheduledService.schedule(() -> {
