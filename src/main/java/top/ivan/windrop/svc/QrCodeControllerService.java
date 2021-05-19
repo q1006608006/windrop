@@ -1,20 +1,15 @@
 package top.ivan.windrop.svc;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import top.ivan.windrop.ex.CacheNotAccessException;
 import top.ivan.windrop.ex.CacheNotFoundException;
 import top.ivan.windrop.ex.CacheTimeoutException;
-import top.ivan.windrop.util.ChallengeKeys;
+import top.ivan.windrop.util.ChallengeTask;
 import top.ivan.windrop.util.IDUtil;
 
-import java.io.File;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -29,10 +24,8 @@ public class QrCodeControllerService {
 
     private final ConcurrentHashMap<String, Supplier<String>> dataSupplierMap = new ConcurrentHashMap<>();
 
-    private final ChallengeKeys challengeKeys = new ChallengeKeys(256);
-
     @Autowired
-    private ScheduledService scheduledService;
+    private CounterAccessKeyService accessService;
 
     public String register(Function<String, String> supplier, int count, int second) {
         String key = IDUtil.getShortUuid();
@@ -47,19 +40,13 @@ public class QrCodeControllerService {
         if (second < 1) {
             second = 60;
         }
-        AtomicInteger counter = new AtomicInteger(count);
-        ChallengeKeys.ChallengeTask task = challengeKeys.registerKey(key, second * 1000L, t -> counter.decrementAndGet() > -1);
+        ChallengeTask<Void> task = accessService.register(key, second * 1000L, 3 * 60 * 1000L, count);
         dataSupplierMap.put(key, supplier);
-
-        scheduledService.schedule(() -> {
-            if (dataSupplierMap.remove(key, supplier)) {
-                scheduledService.schedule(() -> challengeKeys.remove(key, task), 1, TimeUnit.MINUTES);
-            }
-        }, second, TimeUnit.SECONDS);
+        accessService.onClean(task, () -> dataSupplierMap.remove(key, supplier));
     }
 
     public String getData(String key) throws CacheNotFoundException, CacheNotAccessException, CacheTimeoutException {
-        switch (challengeKeys.challenge(key)) {
+        switch (accessService.challenge(key)) {
             case NONE:
                 throw new CacheNotFoundException("no resource for key '" + key + "'");
             case FAILED:
