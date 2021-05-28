@@ -6,7 +6,8 @@ import org.springframework.stereotype.Service;
 import top.ivan.windrop.ex.CacheNotAccessException;
 import top.ivan.windrop.ex.CacheNotFoundException;
 import top.ivan.windrop.ex.CacheTimeoutException;
-import top.ivan.windrop.util.ChallengeTask;
+import top.ivan.windrop.random.ChallengeTask;
+import top.ivan.windrop.random.CounterAccessKeyService;
 import top.ivan.windrop.util.IDUtil;
 
 import java.util.concurrent.ConcurrentHashMap;

@@ -1,9 +1,8 @@
-package top.ivan.windrop.svc;
+package top.ivan.windrop.random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import top.ivan.windrop.util.ChallengeKeys;
-import top.ivan.windrop.util.ChallengeTask;
+import top.ivan.windrop.svc.ScheduledService;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;

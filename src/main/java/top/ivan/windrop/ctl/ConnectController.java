@@ -11,12 +11,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.WinDropApplication;
 import top.ivan.windrop.bean.AccessUser;
 import top.ivan.windrop.bean.ConnectRequest;
 import top.ivan.windrop.bean.ConnectResponse;
+import top.ivan.windrop.ex.BadEncryptException;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.svc.LocalQRConnectHandler;
@@ -52,8 +52,8 @@ public class ConnectController {
     /**
      * 与windrop创建连接或更新连接
      *
-     * @param mono     连接请求
-     * @param shr web请求信息
+     * @param mono 连接请求
+     * @param shr  web请求信息
      * @return 连接windrop的id和validKey
      */
     @PostMapping("connect")
@@ -82,7 +82,7 @@ public class ConnectController {
                 // 解密二维码附带加密数据（连接参数）
                 option = handler.getOption(request.getData());
                 maxAccess = option.getInteger("maxAccess");
-            } catch (Exception e) {
+            } catch (BadEncryptException e) {
                 throw new HttpClientException(HttpStatus.BAD_REQUEST, "数据无效或过期");
             }
             // 弹窗确认是否同意连接
@@ -142,8 +142,9 @@ public class ConnectController {
 
     /**
      * 生成用户id（非随机）
+     *
      * @param deviceId 设备名称
-     * @param locate 一般为wifi名称
+     * @param locate   一般为wifi名称
      * @return 用户ID
      */
     private String generateId(String deviceId, String locate) {

@@ -6,9 +6,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.BufferedImageHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import top.ivan.windrop.svc.IPVerifier;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.ScheduledService;
+import top.ivan.windrop.verify.IPVerifier;
 
 import java.awt.image.BufferedImage;
 import java.util.List;
@@ -25,7 +25,6 @@ public class WinDropConfiguration {
 
     public static final String CONNECT_GROUP = "CONNECT";
     public static final String SWAP_GROUP = "SWAP";
-    public static final String RANDOM_SECURITY_KEY_GROUP = "RANDOM_SECURITY_KEY";
 
     public static final String TEMP_FILE_PATH = "temp";
     public static final String UPLOAD_FILES_PATH = "recv";

@@ -1,5 +1,6 @@
 package top.ivan.windrop.ctl;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +9,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,19 +20,18 @@ import top.ivan.windrop.bean.ApplyResponse;
 import top.ivan.windrop.bean.CommonResponse;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
-import top.ivan.windrop.svc.IPVerifier;
+import top.ivan.windrop.random.RandomEncrypt;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.RandomAccessKeyService;
 import top.ivan.windrop.svc.ResourceSharedService;
 import top.ivan.windrop.util.IDUtil;
+import top.ivan.windrop.verify.VerifyIP;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
-
-import static top.ivan.windrop.util.SpringUtil.getIP;
 
 /**
  * @author Ivan
@@ -52,8 +51,8 @@ public class FileSwapController {
     private RandomAccessKeyService keyService;
     @Autowired
     private PersistUserService userService;
-    @Autowired
-    private IPVerifier ipVerifier;
+
+    private final RandomEncrypt randomEncrypt = new RandomEncrypt(240);
 
     @ResponseBody
     @GetMapping(value = "download/{key}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -78,35 +77,37 @@ public class FileSwapController {
     /**
      * 获取上传请求accessKey，周期内幂等，使用POST请求
      *
-     * @param req http请求信息
      * @return {@link ApplyResponse}
      */
     @ResponseBody
     @PostMapping("upload/apply")
-    public Mono<ApplyResponse> uploadApply(ServerHttpRequest req) {
-//        verifyIp(req);
+    @VerifyIP
+    public Mono<ApplyResponse> uploadApply() {
         return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)));
     }
 
-    @GetMapping("upload")
-    public Mono<String> uploadModel(@RequestParam String key, @RequestParam String id, Mono<Model> mono) {
+    //获取applyKey
+    //客户端获取applyKey+自身validKey进行sha256请求page页面
+    //
+
+    @GetMapping("upload/{id}")
+    @VerifyIP
+    public Mono<String> uploadModel(@RequestParam String key, @PathVariable String id, Mono<Model> mono) {
         AccessUser user = prepareUser(id);
         validApply(key, user);
 
-        return mono.doOnNext(model -> model.addAttribute("hidden", keyService.getKey(FILE_UPLOAD_GROUP, 3 * 60)))
-                .thenReturn("success");
-    }
+        String matchKey = keyService.getKey(FILE_UPLOAD_GROUP, 3 * 60);
+        JSONObject obj = new JSONObject();
+        obj.put("key",matchKey);
+        obj.put("salt",System.currentTimeMillis());
 
-    @ResponseBody
-    @PostMapping("upload/request")
-    public Mono<ApplyResponse> uploadRequest(ServerHttpRequest req) {
-        verifyIp(req);
-        //todo
-        return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)));
+        return mono.doOnNext(model -> model.addAttribute("hidden", "").addAttribute("key", key))
+                .thenReturn("upload");
     }
 
     @ResponseBody
     @PostMapping("upload")
+    @VerifyIP
     public Mono<CommonResponse> fileUpload(@RequestPart("file") Mono<FilePart> mono, @RequestPart("hidden") String hidden) {
         return mono.doFirst(() -> {
             if (!keyService.match(FILE_UPLOAD_GROUP, k -> k.equals(hidden))) {
@@ -141,11 +142,4 @@ public class FileSwapController {
         }
     }
 
-    private void verifyIp(ServerHttpRequest request) {
-        String ip = getIP(request);
-        if (!ipVerifier.accessible(ip)) {
-            log.info("unavailable ip: {}", ip);
-            throw new HttpClientException(HttpStatus.FORBIDDEN, "未授予白名单");
-        }
-    }
 }

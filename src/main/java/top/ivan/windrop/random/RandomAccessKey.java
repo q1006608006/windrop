@@ -1,4 +1,6 @@
-package top.ivan.windrop.util;
+package top.ivan.windrop.random;
+
+import top.ivan.windrop.util.IDUtil;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;

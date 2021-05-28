@@ -9,6 +9,7 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.DigestUtils;
+import top.ivan.windrop.ex.BadEncryptException;
 
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
@@ -88,7 +89,7 @@ public class ConvertUtil {
         return encodeBase64(encrypt(msg.getBytes(), key));
     }
 
-    public static String decrypt(String msg, String key) {
+    public static String decrypt(String msg, String key) throws BadEncryptException {
         return new String(decrypt(decodeBase64(msg), key));
     }
 
@@ -113,7 +114,7 @@ public class ConvertUtil {
         }
     }
 
-    public static byte[] decrypt(byte[] msg, String key) {
+    public static byte[] decrypt(byte[] msg, String key) throws BadEncryptException {
         try {
             if (key.length() < 16) {
                 key = (key + "0000000000000000").substring(0, 16);
@@ -124,13 +125,13 @@ public class ConvertUtil {
             cipher.init(Cipher.DECRYPT_MODE, secretKey, iv);
             return cipher.doFinal(msg);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new BadEncryptException(e);
         } catch (InvalidKeyException e) {
-            throw new RuntimeException("密钥格式不符合要求", e);
+            throw new BadEncryptException("密钥格式不符合要求", e);
         } catch (NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException e) {
-            throw new RuntimeException("密文格式异常", e);
+            throw new BadEncryptException("密文格式异常", e);
         } catch (InvalidAlgorithmParameterException e) {
-            throw new RuntimeException("非法向量");
+            throw new BadEncryptException("非法向量");
         }
     }
 

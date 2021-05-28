@@ -1,6 +1,7 @@
-package top.ivan.windrop.util;
+package top.ivan.windrop.random;
 
 import org.springframework.lang.NonNull;
+import top.ivan.windrop.util.QueuedConcurrentMap;
 
 import java.util.function.Predicate;
 

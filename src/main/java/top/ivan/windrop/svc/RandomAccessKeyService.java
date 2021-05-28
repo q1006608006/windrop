@@ -2,10 +2,10 @@ package top.ivan.windrop.svc;
 
 
 import org.springframework.stereotype.Service;
-import top.ivan.windrop.util.RandomAccessKey;
+import top.ivan.windrop.util.QueuedConcurrentMap;
+import top.ivan.windrop.random.RandomAccessKey;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 /**
@@ -16,7 +16,7 @@ import java.util.function.Predicate;
 @Service
 public class RandomAccessKeyService {
 
-    private final Map<String, RandomAccessKey> groupMap = new ConcurrentHashMap<>();
+    private final Map<String, RandomAccessKey> groupMap = new QueuedConcurrentMap<>(256);
 
     public String getKey(String group) {
         return groupMap.computeIfAbsent(group, g -> new RandomAccessKey(30)).getAccessKey();

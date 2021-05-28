@@ -1,4 +1,4 @@
-package top.ivan.windrop.util;
+package top.ivan.windrop.random;
 
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.ReentrantLock;

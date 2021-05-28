@@ -23,13 +23,13 @@ import top.ivan.windrop.clip.*;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.ex.LengthTooLargeException;
-import top.ivan.windrop.svc.IPVerifier;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.RandomAccessKeyService;
 import top.ivan.windrop.svc.ResourceSharedService;
 import top.ivan.windrop.util.ClipUtil;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
+import top.ivan.windrop.verify.VerifyIP;
 
 import java.io.File;
 import java.io.IOException;
@@ -78,12 +78,6 @@ public class SwapController {
     private ResourceSharedService sharedService;
 
     /**
-     * ip核验器
-     */
-    @Autowired
-    private IPVerifier ipVerifier;
-
-    /**
      * 随机密钥服务
      */
     @Autowired
@@ -119,22 +113,21 @@ public class SwapController {
      * @return 随机访问密钥 {@link ApplyResponse}
      */
     @PostMapping("apply")
+    @VerifyIP
     public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request, ServerHttpRequest shr) {
         log.debug("receive apply request from '{}'", shr.getRemoteAddress());
-
-        // 验证ip
-//        verifyIp(shr);
 
         // 判断请求类型
         boolean isPush = !"pull".equalsIgnoreCase(request.getType());
         // 判断申请的资源类型
         String itemType = isPush ? request.getType() : ClipUtil.getClipBeanType(ClipUtil.getClipBean());
 
+        AccessUser user = prepareUser(request.getId());
         // PC上确认是否接收
-        confirm(shr, request, itemType, isPush);
+        confirm(shr, user, request, itemType, isPush);
 
         // 返回随机密钥,用于签名
-        return Mono.just(ApplyResponse.success(keyService.getKey(getSwapGroupKey(itemType, isPush))));
+        return Mono.just(ApplyResponse.success(keyService.getKey(getSwapGroupKey(itemType, user, isPush))));
     }
 
     /**
@@ -145,11 +138,9 @@ public class SwapController {
      * @return 更新结果
      */
     @PostMapping("push")
+    @VerifyIP
     public Mono<CommonResponse> setClipboard(@RequestBody WindropRequest request, ServerHttpRequest shr) {
         log.info("receive push request from '{}'", shr.getRemoteAddress());
-
-        // 验证ip
-        verifyIp(shr);
 
         // 校验data
         byte[] data;
@@ -186,11 +177,9 @@ public class SwapController {
      * @return 本地剪切板内容或大文件resourceId
      */
     @PostMapping("pull")
+    @VerifyIP
     public Mono<WindropResponse> getClipboard(@RequestBody WindropRequest request, ServerHttpRequest shr) {
         log.info("receive pull request from '{}'", shr.getRemoteAddress());
-
-        // 验证ip
-        verifyIp(shr);
 
         // 用户（设备）信息
         AccessUser user = prepareUser(request.getId());
@@ -217,7 +206,7 @@ public class SwapController {
      * @param data    push的数据（减少base64解码次数）
      */
     private void validPushRequest(AccessUser user, WindropRequest request, byte[] data) {
-        if (!keyService.match(getSwapGroupKey(request.getType(), true), key -> Objects.equals(DigestUtils.sha256Hex(DigestUtils.sha256Hex(data) + ";" + key + ";" + user.getValidKey()), request.getSign()))) {
+        if (!keyService.match(getSwapGroupKey(request.getType(), user, true), key -> Objects.equals(DigestUtils.sha256Hex(DigestUtils.sha256Hex(data) + ";" + key + ";" + user.getValidKey()), request.getSign()))) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "权限校验失败");
         }
     }
@@ -230,7 +219,7 @@ public class SwapController {
      * @param targetType 目标类型
      */
     private void validPullRequest(AccessUser user, WindropRequest request, String targetType) {
-        if (!keyService.match(getSwapGroupKey(targetType, false), key -> Objects.equals(DigestUtils.sha256Hex(key + ";" + user.getValidKey()), request.getSign()))) {
+        if (!keyService.match(getSwapGroupKey(targetType, user, false), key -> Objects.equals(DigestUtils.sha256Hex(key + ";" + user.getValidKey()), request.getSign()))) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "权限校验失败");
         }
     }
@@ -480,10 +469,9 @@ public class SwapController {
     /**
      * 手动确认
      */
-    private void confirm(ServerHttpRequest webRequest, ApplyRequest request, String itemType, boolean isPush) {
+    private void confirm(ServerHttpRequest webRequest, AccessUser user, ApplyRequest request, String itemType, boolean isPush) {
         if (config.needConfirm(itemType, isPush)) {
             String msg;
-            AccessUser user = prepareUser(request.getId());
             if (!isPush) {
                 ClipBean bean = ClipUtil.getClipBean();
                 String itemName;
@@ -514,20 +502,12 @@ public class SwapController {
         }
     }
 
-    private void verifyIp(ServerHttpRequest request) {
-        String ip = getIP(request);
-        if (!ipVerifier.accessible(ip)) {
-            log.info("unavailable ip: {}", ip);
-            throw new HttpClientException(HttpStatus.FORBIDDEN, "未授予白名单");
-        }
-    }
-
     /**
      * 获取交换随机密钥
      */
-    private String getSwapGroupKey(String itemType, boolean isPush) {
+    private String getSwapGroupKey(String itemType, AccessUser user, boolean isPush) {
         if (isPush) {
-            return String.join("_", WinDropConfiguration.SWAP_GROUP, "push", itemType);
+            return String.join("_", WinDropConfiguration.SWAP_GROUP, user.getId(), "push", itemType);
         } else {
             return String.join("_", WinDropConfiguration.SWAP_GROUP, "pull", itemType);
         }
