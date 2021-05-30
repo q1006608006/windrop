@@ -85,7 +85,7 @@ public class ConvertUtil {
         return MatrixToImageWriter.toBufferedImage(bitMatrix);
     }
 
-    public static String encrypt(String msg, String key) {
+    public static String encrypt(String msg, String key) throws BadEncryptException {
         return encodeBase64(encrypt(msg.getBytes(), key));
     }
 
@@ -93,7 +93,7 @@ public class ConvertUtil {
         return new String(decrypt(decodeBase64(msg), key));
     }
 
-    public static byte[] encrypt(byte[] content, String key) {
+    public static byte[] encrypt(byte[] content, String key) throws BadEncryptException {
         try {
             if (key.length() < 16) {
                 key = (key + "0000000000000000").substring(0, 16);
@@ -104,13 +104,13 @@ public class ConvertUtil {
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, iv);
             return cipher.doFinal(content);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new BadEncryptException(e);
         } catch (InvalidKeyException e) {
-            throw new RuntimeException("密钥格式不符合要求", e);
+            throw new BadEncryptException("密钥格式不符合要求", e);
         } catch (NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException e) {
-            throw new RuntimeException("密文格式异常", e);
+            throw new BadEncryptException("解密失败", e);
         } catch (InvalidAlgorithmParameterException e) {
-            throw new RuntimeException("非法向量");
+            throw new BadEncryptException("非法向量");
         }
     }
 

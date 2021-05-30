@@ -16,6 +16,7 @@ import top.ivan.windrop.svc.LocalQRConnectHandler;
 import top.ivan.windrop.svc.LocalQRFileSharedHandler;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.tray.WindropSystemTray;
+import top.ivan.windrop.util.SystemUtil;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileSystemView;
@@ -24,6 +25,9 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.util.stream.Collectors;
 
 /**
  * @author 10066
@@ -191,7 +195,7 @@ public class WinDropApplication {
                     if (!dir.exists() || !dir.isDirectory()) {
                         dir.mkdirs();
                     }
-                    file.createNewFile();
+                    Files.write(file.toPath(), SystemUtil.getLocalIPList().stream().filter(s -> !"127.0.0.1".equals(s)).map(s -> s.replaceAll("(.*)\\.\\d{1,3}$", "$1.1>255")).collect(Collectors.toList()), StandardOpenOption.CREATE);
                 } catch (Exception e) {
                     alert("无法创建白名单文件");
                     log.error("create file 'conf/ipList.txt' failed", e);

@@ -31,7 +31,7 @@ public class LocalQRConnectHandler {
     @Autowired
     private RandomAccessKeyService keyService;
 
-    private RandomEncrypt randomEncrypt = new RandomEncrypt(90);
+    private final RandomEncrypt randomEncrypt = new RandomEncrypt(90);
 
     public String newConnect(int second) {
         JSONObject qrData = new JSONObject();
@@ -48,7 +48,7 @@ public class LocalQRConnectHandler {
         qrData.put("data", encryptData);
 
         String qrBody = qrData.toJSONString();
-        return qrCodeService.register(k -> qrBody, 1, 60);
+        return qrCodeService.register(k -> qrBody, 1, 90);
     }
 
     public boolean match(String locate, String deviceId, String sign) {
@@ -56,7 +56,7 @@ public class LocalQRConnectHandler {
     }
 
     public JSONObject getOption(String data) throws BadEncryptException {
-        String body = randomEncrypt.decrypt(data);
+        String body = randomEncrypt.decrypt(data, true);
         return JSONObject.parseObject(body);
     }
 

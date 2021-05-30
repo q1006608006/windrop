@@ -8,7 +8,6 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +28,7 @@ import top.ivan.windrop.svc.ResourceSharedService;
 import top.ivan.windrop.util.ClipUtil;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
+import top.ivan.windrop.verify.WebHandler;
 import top.ivan.windrop.verify.VerifyIP;
 
 import java.io.File;
@@ -37,8 +37,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Objects;
-
-import static top.ivan.windrop.util.SpringUtil.getIP;
 
 /**
  * @author Ivan
@@ -109,14 +107,11 @@ public class SwapController {
      * 交换请求
      *
      * @param request 推送数据{@link ApplyRequest}
-     * @param shr     请求信息{@link ServerHttpRequest}
      * @return 随机访问密钥 {@link ApplyResponse}
      */
     @PostMapping("apply")
     @VerifyIP
-    public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request, ServerHttpRequest shr) {
-        log.debug("receive apply request from '{}'", shr.getRemoteAddress());
-
+    public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request) {
         // 判断请求类型
         boolean isPush = !"pull".equalsIgnoreCase(request.getType());
         // 判断申请的资源类型
@@ -124,7 +119,7 @@ public class SwapController {
 
         AccessUser user = prepareUser(request.getId());
         // PC上确认是否接收
-        confirm(shr, user, request, itemType, isPush);
+        confirm(user, request, itemType, isPush);
 
         // 返回随机密钥,用于签名
         return Mono.just(ApplyResponse.success(keyService.getKey(getSwapGroupKey(itemType, user, isPush))));
@@ -134,14 +129,11 @@ public class SwapController {
      * 远端推送请求
      *
      * @param request 推送数据{@link WindropRequest}
-     * @param shr     请求信息{@link ServerHttpRequest}
      * @return 更新结果
      */
     @PostMapping("push")
     @VerifyIP
-    public Mono<CommonResponse> setClipboard(@RequestBody WindropRequest request, ServerHttpRequest shr) {
-        log.info("receive push request from '{}'", shr.getRemoteAddress());
-
+    public Mono<CommonResponse> setClipboard(@RequestBody WindropRequest request) {
         // 校验data
         byte[] data;
         if (null == request.getData()) {
@@ -173,14 +165,11 @@ public class SwapController {
      * 远端拉取请求
      *
      * @param request 拉取请求数据{@link WindropRequest}
-     * @param shr     请求信息{@link ServerHttpRequest}
      * @return 本地剪切板内容或大文件resourceId
      */
     @PostMapping("pull")
     @VerifyIP
-    public Mono<WindropResponse> getClipboard(@RequestBody WindropRequest request, ServerHttpRequest shr) {
-        log.info("receive pull request from '{}'", shr.getRemoteAddress());
-
+    public Mono<WindropResponse> getClipboard(@RequestBody WindropRequest request) {
         // 用户（设备）信息
         AccessUser user = prepareUser(request.getId());
 
@@ -469,7 +458,7 @@ public class SwapController {
     /**
      * 手动确认
      */
-    private void confirm(ServerHttpRequest webRequest, AccessUser user, ApplyRequest request, String itemType, boolean isPush) {
+    private void confirm(AccessUser user, ApplyRequest request, String itemType, boolean isPush) {
         if (config.needConfirm(itemType, isPush)) {
             String msg;
             if (!isPush) {
@@ -495,7 +484,7 @@ public class SwapController {
                         break;
                 }
             }
-            if (!WinDropApplication.WindropHandler.confirm("来自" + getIP(webRequest), msg)) {
+            if (!WinDropApplication.WindropHandler.confirm("来自" + WebHandler.getRemoteIP(), msg)) {
                 log.debug("canceled the request: {}", JSONObject.toJSONString(request));
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
             }

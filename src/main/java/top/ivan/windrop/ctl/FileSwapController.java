@@ -82,8 +82,8 @@ public class FileSwapController {
     @ResponseBody
     @PostMapping("upload/apply")
     @VerifyIP
-    public Mono<ApplyResponse> uploadApply() {
-        return Mono.just(ApplyResponse.success(keyService.getKey(FILE_UPLOAD_APPLY_GROUP)));
+    public Mono<ApplyResponse> uploadApply(@RequestParam String id) {
+        return Mono.just(ApplyResponse.success(keyService.getKey(prepareKey(prepareUser(id), FILE_UPLOAD_APPLY_GROUP), 30)));
     }
 
     //获取applyKey
@@ -96,13 +96,19 @@ public class FileSwapController {
         AccessUser user = prepareUser(id);
         validApply(key, user);
 
-        String matchKey = keyService.getKey(FILE_UPLOAD_GROUP, 3 * 60);
+        String matchKey = keyService.getKey(prepareKey(user, FILE_UPLOAD_GROUP), 3 * 60);
         JSONObject obj = new JSONObject();
-        obj.put("key",matchKey);
-        obj.put("salt",System.currentTimeMillis());
+        obj.put("userId", user.getId());
+        obj.put("key", matchKey);
+        obj.put("salt", System.currentTimeMillis());
 
-        return mono.doOnNext(model -> model.addAttribute("hidden", "").addAttribute("key", key))
-                .thenReturn("upload");
+        return mono.doOnNext(model -> model.addAttribute("hidden", randomEncrypt.encrypt(obj.toString()))).thenReturn("upload");
+    }
+
+    @PostMapping("upload/confirm")
+    @VerifyIP
+    public Mono<CommonResponse> uploadConfirm() {
+        return null;
     }
 
     @ResponseBody
@@ -110,6 +116,7 @@ public class FileSwapController {
     @VerifyIP
     public Mono<CommonResponse> fileUpload(@RequestPart("file") Mono<FilePart> mono, @RequestPart("hidden") String hidden) {
         return mono.doFirst(() -> {
+            //todo
             if (!keyService.match(FILE_UPLOAD_GROUP, k -> k.equals(hidden))) {
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
             }
@@ -137,9 +144,13 @@ public class FileSwapController {
     }
 
     private void validApply(String key, AccessUser user) {
-        if (!keyService.match(FILE_UPLOAD_APPLY_GROUP, k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + k).equals(key))) {
+        if (!keyService.match(prepareKey(user, FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + k).equals(key))) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "核验未通过");
         }
+    }
+
+    private String prepareKey(AccessUser user, String group) {
+        return String.join("_", group, user.getId());
     }
 
 }

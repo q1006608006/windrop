@@ -3,7 +3,6 @@ package top.ivan.windrop.util;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.util.StringUtils;
-import top.ivan.windrop.ex.BadEncryptException;
 
 import java.io.*;
 import java.net.*;
@@ -159,7 +158,7 @@ public class SystemUtil {
         return ConvertUtil.encrypt(data, getSystemKey());
     }
 
-    public static byte[] decrypt(byte[] data) throws BadEncryptException {
+    public static byte[] decrypt(byte[] data) {
         return ConvertUtil.decrypt(data, getSystemKey());
     }
 

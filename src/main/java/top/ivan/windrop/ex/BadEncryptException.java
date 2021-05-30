@@ -4,7 +4,7 @@ package top.ivan.windrop.ex;
  * @author Ivan
  * @since 2021/05/28 17:40
  */
-public class BadEncryptException extends Exception {
+public class BadEncryptException extends RuntimeException {
     public BadEncryptException() {
         super();
     }
