@@ -28,4 +28,9 @@ public class ApplyRequest {
      * 数据大小
      */
     private String size;
+
+    /*
+    * sha256摘要
+    */
+    private String summary;
 }

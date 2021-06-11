@@ -81,7 +81,15 @@ public class RandomAccessKey {
         }
     }
 
-    private boolean isTimeout() {
+    public String getOriginKey() {
+        return accessKey;
+    }
+
+    public void expired() {
+        setExpired(lastUpdateTime);
+    }
+
+    public boolean isTimeout() {
         return isTimeout(getTime());
     }
 
@@ -91,6 +99,10 @@ public class RandomAccessKey {
 
     private long getTime() {
         return System.currentTimeMillis();
+    }
+
+    public int getInterval() {
+        return intervalMillis / 1000;
     }
 
 }

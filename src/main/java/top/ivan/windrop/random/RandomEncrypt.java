@@ -2,9 +2,6 @@ package top.ivan.windrop.random;
 
 import top.ivan.windrop.ex.BadEncryptException;
 import top.ivan.windrop.util.ConvertUtil;
-import top.ivan.windrop.util.SystemUtil;
-
-import java.util.Objects;
 
 /**
  * @author Ivan
@@ -22,9 +19,16 @@ public class RandomEncrypt {
     }
 
     public String decrypt(String content, boolean expired) throws BadEncryptException {
-        String ck = key.getAccessKey();
-        if (key.match(k -> Objects.equals(ck, k), expired)) {
-            return ConvertUtil.decrypt(content, ck);
+        if (!key.isTimeout()) {
+            String decryptKey = key.getOriginKey();
+            if (expired) {
+                key.expired();
+            }
+            try {
+                return ConvertUtil.decrypt(content, decryptKey);
+            } catch (Exception e) {
+                throw new BadEncryptException("数据状态异常", e);
+            }
         }
         throw new BadEncryptException("数据已过期");
     }

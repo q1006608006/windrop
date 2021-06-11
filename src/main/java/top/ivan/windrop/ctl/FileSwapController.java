@@ -14,8 +14,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
+import top.ivan.windrop.WinDropApplication;
 import top.ivan.windrop.WinDropConfiguration;
 import top.ivan.windrop.bean.AccessUser;
+import top.ivan.windrop.bean.ApplyRequest;
 import top.ivan.windrop.bean.ApplyResponse;
 import top.ivan.windrop.bean.CommonResponse;
 import top.ivan.windrop.ex.HttpClientException;
@@ -25,7 +27,9 @@ import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.RandomAccessKeyService;
 import top.ivan.windrop.svc.ResourceSharedService;
 import top.ivan.windrop.util.IDUtil;
+import top.ivan.windrop.util.QueuedConcurrentMap;
 import top.ivan.windrop.verify.VerifyIP;
+import top.ivan.windrop.verify.WebHandler;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -45,6 +49,8 @@ public class FileSwapController {
     public static final String FILE_UPLOAD_APPLY_GROUP = "FILE_UPLOAD_APPLY";
     public static final String FILE_UPLOAD_GROUP = "FILE_UPLOAD";
 
+    public static final int UPLOAD_TIMEOUT = 60 * 15;
+
     @Autowired
     private ResourceSharedService resourceSharedService;
     @Autowired
@@ -52,7 +58,9 @@ public class FileSwapController {
     @Autowired
     private PersistUserService userService;
 
-    private final RandomEncrypt randomEncrypt = new RandomEncrypt(240);
+    private final QueuedConcurrentMap<String, RandomEncrypt> userSessionMap = new QueuedConcurrentMap<>(8);
+
+    private final RandomEncrypt randomEncrypt = new RandomEncrypt(UPLOAD_TIMEOUT);
 
     @ResponseBody
     @GetMapping(value = "download/{key}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -75,40 +83,30 @@ public class FileSwapController {
     }
 
     /**
-     * 获取上传请求accessKey，周期内幂等，使用POST请求
+     * 获取上传请求accessKey
      *
      * @return {@link ApplyResponse}
      */
     @ResponseBody
     @PostMapping("upload/apply")
     @VerifyIP
-    public Mono<ApplyResponse> uploadApply(@RequestParam String id) {
-        return Mono.just(ApplyResponse.success(keyService.getKey(prepareKey(prepareUser(id), FILE_UPLOAD_APPLY_GROUP), 30)));
+    public Mono<ApplyResponse> uploadApply(@RequestBody ApplyRequest request) {
+        confirm(request);
+        return Mono.just(ApplyResponse.success(keyService.getKey(prepareKey(request.getId(), FILE_UPLOAD_APPLY_GROUP), UPLOAD_TIMEOUT)));
     }
 
     //获取applyKey
     //客户端获取applyKey+自身validKey进行sha256请求page页面
     //
 
-    @GetMapping("upload/{id}")
+    @GetMapping("upload/{resourceId}")
     @VerifyIP
-    public Mono<String> uploadModel(@RequestParam String key, @PathVariable String id, Mono<Model> mono) {
-        AccessUser user = prepareUser(id);
-        validApply(key, user);
-
-        String matchKey = keyService.getKey(prepareKey(user, FILE_UPLOAD_GROUP), 3 * 60);
+    public Mono<String> uploadModel(@RequestParam String id, @PathVariable String resourceId, Mono<Model> mono) {
         JSONObject obj = new JSONObject();
-        obj.put("userId", user.getId());
-        obj.put("key", matchKey);
+        obj.put("userId", id);
+        obj.put("resourceId", resourceId);
         obj.put("salt", System.currentTimeMillis());
-
         return mono.doOnNext(model -> model.addAttribute("hidden", randomEncrypt.encrypt(obj.toString()))).thenReturn("upload");
-    }
-
-    @PostMapping("upload/confirm")
-    @VerifyIP
-    public Mono<CommonResponse> uploadConfirm() {
-        return null;
     }
 
     @ResponseBody
@@ -144,13 +142,22 @@ public class FileSwapController {
     }
 
     private void validApply(String key, AccessUser user) {
-        if (!keyService.match(prepareKey(user, FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + k).equals(key))) {
+        if (!keyService.match(prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + k).equals(key))) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "核验未通过");
         }
     }
 
-    private String prepareKey(AccessUser user, String group) {
-        return String.join("_", group, user.getId());
+    private String prepareKey(String id, String group) {
+        return String.join("_", group, id);
     }
 
+    private void confirm(ApplyRequest req) {
+        String msg = String.format("是否接收文件: %s\n" +
+                "来自设备: %s\n" +
+                "大小: %s\n" +
+                "摘要值: %s", req.getFilename(), prepareUser(req.getId()).getAlias(), req.getSize(), req.getSummary());
+        if (!WinDropApplication.WindropHandler.confirm("来自" + WebHandler.getRemoteIP(), msg)) {
+            throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
+        }
+    }
 }
