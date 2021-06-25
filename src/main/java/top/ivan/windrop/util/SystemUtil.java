@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.util.StringUtils;
 
+import javax.swing.*;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -162,4 +163,9 @@ public class SystemUtil {
         return ConvertUtil.decrypt(data, getSystemKey());
     }
 
+    public static String getDocumentsPath() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setVisible(false);
+        return chooser.getFileSystemView().getDefaultDirectory().toString();
+    }
 }

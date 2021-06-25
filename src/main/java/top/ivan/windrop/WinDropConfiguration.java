@@ -8,6 +8,7 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.ScheduledService;
+import top.ivan.windrop.util.SystemUtil;
 import top.ivan.windrop.verify.IPVerifier;
 
 import java.awt.image.BufferedImage;
@@ -29,6 +30,8 @@ public class WinDropConfiguration {
     public static final String TEMP_FILE_PATH = "temp";
     public static final String UPLOAD_FILES_PATH = "recv";
 
+    private static final String BASE_DATA_ROOT = SystemUtil.getDocumentsPath() + "/windrop/";
+
     @Bean
     public HttpMessageConverter<BufferedImage> imageConverter(List<HttpMessageConverter<?>> converters) {
         HttpMessageConverter<BufferedImage> converter = new BufferedImageHttpMessageConverter();
@@ -43,7 +46,7 @@ public class WinDropConfiguration {
 
     @Bean
     public PersistUserService getPersistUserService() {
-        return new PersistUserService("conf/u.data");
+        return new PersistUserService(BASE_DATA_ROOT + "u.data");
     }
 
     @Bean

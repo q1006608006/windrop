@@ -69,9 +69,7 @@ public class ConvertUtil {
     }
 
     public static Image getQrCodeImage(String content, int width, int height, String format) throws WriterException, IOException {
-                /*
-           定义二维码的参数
-        */
+        //定义二维码的参数
         HashMap<EncodeHintType, Object> hashMap = new HashMap<>();
         // 设置二维码字符编码
         hashMap.put(EncodeHintType.CHARACTER_SET, "UTF-8");

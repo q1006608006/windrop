@@ -49,7 +49,7 @@ public class FileSwapController {
     public static final String FILE_UPLOAD_APPLY_GROUP = "FILE_UPLOAD_APPLY";
     public static final String FILE_UPLOAD_GROUP = "FILE_UPLOAD";
 
-    public static final int UPLOAD_TIMEOUT = 60 * 15;
+    public static final int UPLOAD_TIMEOUT = Integer.MAX_VALUE;
 
     @Autowired
     private ResourceSharedService resourceSharedService;
@@ -91,28 +91,37 @@ public class FileSwapController {
     @PostMapping("upload/apply")
     @VerifyIP
     public Mono<ApplyResponse> uploadApply(@RequestBody ApplyRequest request) {
-        confirm(request);
-        return Mono.just(ApplyResponse.success(keyService.getKey(prepareKey(request.getId(), FILE_UPLOAD_APPLY_GROUP), UPLOAD_TIMEOUT)));
+//        confirm(request);
+        return Mono.just(ApplyResponse.success(keyService.getKey(prepareKey(request.getId(), FILE_UPLOAD_APPLY_GROUP), 30)));
     }
 
     //获取applyKey
     //客户端获取applyKey+自身validKey进行sha256请求page页面
     //
 
-    @GetMapping("upload/{resourceId}")
+    @GetMapping("upload/{key}")
     @VerifyIP
-    public Mono<String> uploadModel(@RequestParam String id, @PathVariable String resourceId, Mono<Model> mono) {
-        JSONObject obj = new JSONObject();
-        obj.put("userId", id);
-        obj.put("resourceId", resourceId);
-        obj.put("salt", System.currentTimeMillis());
-        return mono.doOnNext(model -> model.addAttribute("hidden", randomEncrypt.encrypt(obj.toString()))).thenReturn("upload");
+    public Mono<String> uploadModel(@RequestParam String id, @PathVariable String key, Mono<Model> mono) {
+        AccessUser user = prepareUser(id);
+        validApply(key, user);
+
+        JSONObject opt = new JSONObject();
+        opt.put("userId", id);
+        opt.put("sourceIp", WebHandler.getRemoteIP());
+        opt.put("salt", System.currentTimeMillis());
+
+        randomEncrypt.update();
+        return mono.doOnNext(model -> model.addAttribute("hidden", randomEncrypt.encrypt(opt.toString()))).thenReturn("upload");
     }
 
     @ResponseBody
     @PostMapping("upload")
     @VerifyIP
     public Mono<CommonResponse> fileUpload(@RequestPart("file") Mono<FilePart> mono, @RequestPart("hidden") String hidden) {
+        String optStr = randomEncrypt.decrypt(hidden, true);
+        JSONObject opt = JSONObject.parseObject(optStr);
+        validOption(opt);
+
         return mono.doFirst(() -> {
             //todo
             if (!keyService.match(FILE_UPLOAD_GROUP, k -> k.equals(hidden))) {
@@ -149,6 +158,10 @@ public class FileSwapController {
 
     private String prepareKey(String id, String group) {
         return String.join("_", group, id);
+    }
+
+    private void validOption(JSONObject option, AccessUser user) {
+
     }
 
     private void confirm(ApplyRequest req) {
