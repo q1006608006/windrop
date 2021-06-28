@@ -103,11 +103,11 @@ public class FileSwapController {
     @VerifyIP
     public Mono<String> uploadModel(@RequestParam String id, @PathVariable String key, Mono<Model> mono) {
         AccessUser user = prepareUser(id);
-        validApply(key, user);
+        valid(key, user);
 
         JSONObject opt = new JSONObject();
         opt.put("userId", id);
-        opt.put("sourceIp", WebHandler.getRemoteIP());
+        opt.put("key", key);
         opt.put("salt", System.currentTimeMillis());
 
         randomEncrypt.update();
@@ -120,17 +120,14 @@ public class FileSwapController {
     public Mono<CommonResponse> fileUpload(@RequestPart("file") Mono<FilePart> mono, @RequestPart("hidden") String hidden) {
         String optStr = randomEncrypt.decrypt(hidden, true);
         JSONObject opt = JSONObject.parseObject(optStr);
-        validOption(opt);
+        AccessUser user = prepareUser(opt.getString("id"));
+        valid(opt.getString("key"), user);
 
-        return mono.doFirst(() -> {
-            //todo
-            if (!keyService.match(FILE_UPLOAD_GROUP, k -> k.equals(hidden))) {
-                throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
-            }
-        }).doOnNext(fp -> {
+        return mono.doOnNext(fp -> {
             String fn = fp.filename();
             Path p = Paths.get(WinDropConfiguration.UPLOAD_FILES_PATH, fn);
             fp.transferTo(p);
+        }).doFinally(s -> {
         }).thenReturn(CommonResponse.success("上传成功"));
     }
 
@@ -150,18 +147,14 @@ public class FileSwapController {
         }
     }
 
-    private void validApply(String key, AccessUser user) {
-        if (!keyService.match(prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + k).equals(key))) {
+    private void valid(String key, AccessUser user) {
+        if (!keyService.match(prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + WebHandler.getRemoteIP() + ";" + k).equals(key))) {
             throw new HttpClientException(HttpStatus.FORBIDDEN, "核验未通过");
         }
     }
 
     private String prepareKey(String id, String group) {
         return String.join("_", group, id);
-    }
-
-    private void validOption(JSONObject option, AccessUser user) {
-
     }
 
     private void confirm(ApplyRequest req) {

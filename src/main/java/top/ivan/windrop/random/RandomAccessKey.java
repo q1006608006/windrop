@@ -7,7 +7,7 @@ import java.util.function.Predicate;
 
 public class RandomAccessKey {
 
-    private final int intervalMillis;
+    private final long intervalMillis;
     private volatile String accessKey;
     private volatile long lastUpdateTime;
 
@@ -15,7 +15,7 @@ public class RandomAccessKey {
     private final AtomicBoolean inCompare = new AtomicBoolean(false);
 
     public RandomAccessKey(int interval) {
-        this.intervalMillis = interval * 1000;
+        this.intervalMillis = interval * 1000L;
     }
 
     public boolean tryUpdate() {
@@ -102,7 +102,7 @@ public class RandomAccessKey {
     }
 
     public int getInterval() {
-        return intervalMillis / 1000;
+        return (int) intervalMillis / 1000;
     }
 
 }
