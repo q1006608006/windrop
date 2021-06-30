@@ -7,7 +7,9 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import top.ivan.windrop.ex.BadEncryptException;
 
@@ -41,6 +43,14 @@ public class ConvertUtil {
 
     public static String decodeBase64Str(String data) {
         return new String(decodeBase64(data));
+    }
+
+    public static String toHex(byte[] content) {
+        return Hex.encodeHexString(content);
+    }
+
+    public static byte[] fromHex(String data) throws DecoderException {
+        return Hex.decodeHex(data);
     }
 
     public static String sha256(String data) {

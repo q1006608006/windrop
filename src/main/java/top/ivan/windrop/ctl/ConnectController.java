@@ -88,6 +88,8 @@ public class ConnectController {
             // 弹窗确认是否同意连接
             if (!confirm(maxAccess, request, remoteAddress.getAddress().getHostAddress())) {
                 return failure("拒绝连接");
+            } else {
+                handler.reset();
             }
             // 生成设备ID及验证密钥
             String uid = generateId(request.getDeviceId(), request.getLocate());

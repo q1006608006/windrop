@@ -18,12 +18,9 @@ public class RandomEncrypt {
         return ConvertUtil.encrypt(data, key.getAccessKey());
     }
 
-    public String decrypt(String content, boolean expired) throws BadEncryptException {
+    public String decrypt(String content) throws BadEncryptException {
         if (!key.isTimeout()) {
             String decryptKey = key.getOriginKey();
-            if (expired) {
-                key.expired();
-            }
             try {
                 return ConvertUtil.decrypt(content, decryptKey);
             } catch (Exception e) {
@@ -35,5 +32,9 @@ public class RandomEncrypt {
 
     public void update() {
         key.tryUpdate();
+    }
+
+    public void expired() {
+        key.expired();
     }
 }

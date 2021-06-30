@@ -1,6 +1,5 @@
 package top.ivan.windrop.ctl;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,15 +21,15 @@ import top.ivan.windrop.bean.ApplyResponse;
 import top.ivan.windrop.bean.CommonResponse;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
-import top.ivan.windrop.random.RandomEncrypt;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.RandomAccessKeyService;
 import top.ivan.windrop.svc.ResourceSharedService;
+import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
-import top.ivan.windrop.util.QueuedConcurrentMap;
 import top.ivan.windrop.verify.VerifyIP;
 import top.ivan.windrop.verify.WebHandler;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -57,10 +56,6 @@ public class FileSwapController {
     private RandomAccessKeyService keyService;
     @Autowired
     private PersistUserService userService;
-
-    private final QueuedConcurrentMap<String, RandomEncrypt> userSessionMap = new QueuedConcurrentMap<>(8);
-
-    private final RandomEncrypt randomEncrypt = new RandomEncrypt(UPLOAD_TIMEOUT);
 
     @ResponseBody
     @GetMapping(value = "download/{key}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -91,45 +86,76 @@ public class FileSwapController {
     @PostMapping("upload/apply")
     @VerifyIP
     public Mono<ApplyResponse> uploadApply(@RequestBody ApplyRequest request) {
-//        confirm(request);
         return Mono.just(ApplyResponse.success(keyService.getKey(prepareKey(request.getId(), FILE_UPLOAD_APPLY_GROUP), 30)));
     }
 
-    //获取applyKey
-    //客户端获取applyKey+自身validKey进行sha256请求page页面
-    //
-
     @GetMapping("upload/{key}")
     @VerifyIP
-    public Mono<String> uploadModel(@RequestParam String id, @PathVariable String key, Mono<Model> mono) {
+    public Mono<String> uploadModel(@RequestParam String id, @PathVariable String key, Mono<Model> modelMono) {
         AccessUser user = prepareUser(id);
         valid(key, user);
 
-        JSONObject opt = new JSONObject();
-        opt.put("userId", id);
-        opt.put("key", key);
-        opt.put("salt", System.currentTimeMillis());
-
-        randomEncrypt.update();
-        return mono.doOnNext(model -> model.addAttribute("hidden", randomEncrypt.encrypt(opt.toString()))).thenReturn("upload");
+        return WebHandler.getExchange().getSession()
+                .doOnNext(s -> s.getAttributes().put("user", user))
+                .then(modelMono)
+                .doOnNext(model -> model.addAttribute("hidden", ""))
+                .thenReturn("upload");
     }
+
+/*
+    @ResponseBody
+    @PostMapping("upload")
+    @VerifyIP
+    public Mono<CommonResponse> fileUpload(@RequestPart("file") FilePart fp, @RequestPart("hidden") String hidden) {
+        String fn = fp.filename();
+        Path p = Paths.get(WinDropConfiguration.UPLOAD_FILES_PATH, fn);
+        return WebHandler.getExchange().getSession().map(s -> {
+            AccessUser user = s.getAttribute("user");
+            if (null == user) {
+                throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
+            }
+            return user;
+        }).flatMap(user -> {
+            return fp.transferTo(p).doFinally(s -> confirmFile(p.toFile(), user)).thenReturn(CommonResponse.success("上传成功"));
+        });
+    }
+*/
 
     @ResponseBody
     @PostMapping("upload")
     @VerifyIP
-    public Mono<CommonResponse> fileUpload(@RequestPart("file") Mono<FilePart> mono, @RequestPart("hidden") String hidden) {
-        String optStr = randomEncrypt.decrypt(hidden, true);
-        JSONObject opt = JSONObject.parseObject(optStr);
-        AccessUser user = prepareUser(opt.getString("id"));
-        valid(opt.getString("key"), user);
-
-        return mono.doOnNext(fp -> {
+    public Mono<CommonResponse> fileUpload(@RequestPart("file") Mono<FilePart> fpMono) {
+        return fpMono.flatMap(fp -> {
             String fn = fp.filename();
             Path p = Paths.get(WinDropConfiguration.UPLOAD_FILES_PATH, fn);
-            fp.transferTo(p);
-        }).doFinally(s -> {
-        }).thenReturn(CommonResponse.success("上传成功"));
+
+            return WebHandler.getExchange().getSession().map(s -> {
+                AccessUser user = s.getAttribute("user");
+                if (null == user) {
+                    throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
+                }
+                return user;
+            }).flatMap(user -> fp.transferTo(p).thenReturn(CommonResponse.success("成功")).doFinally(s -> confirmFile(p.toFile(), user)));
+        });
     }
+
+    @ResponseBody
+    @PostMapping("test")
+//    @VerifyIP
+    public Mono<CommonResponse> test() {
+        Mono<String> idMono = Mono.just("id");
+        Mono<String> valueMono = Mono.just("value");
+
+        return idMono.flatMap(id -> {
+            System.out.println("idMono flatMap");
+
+            return valueMono.map(s -> {
+                System.out.println("valueMono map");
+                return s;
+            }).flatMap(user -> Mono.fromRunnable(() -> System.out.println("valueMono flatMap")).thenReturn(CommonResponse.success("成功")).doFinally(s -> System.out.println("finally")));
+        });
+    }
+
 
     private AccessUser prepareUser(String id) {
         try {
@@ -157,13 +183,23 @@ public class FileSwapController {
         return String.join("_", group, id);
     }
 
-    private void confirm(ApplyRequest req) {
-        String msg = String.format("是否接收文件: %s\n" +
+    private void confirmFile(File f, AccessUser user) {
+        String md5;
+        try {
+            md5 = ConvertUtil.toHex(DigestUtils.digest(DigestUtils.getMd5Digest(), f));
+        } catch (IOException e) {
+            throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "服务器IO异常");
+        }
+
+        String msg = String.format("请确认是否接收文件: %s\n" +
                 "来自设备: %s\n" +
                 "大小: %s\n" +
-                "摘要值: %s", req.getFilename(), prepareUser(req.getId()).getAlias(), req.getSize(), req.getSummary());
+                "md5摘要: %s", f.getName(), user.getAlias(), f.getTotalSpace(), md5);
         if (!WinDropApplication.WindropHandler.confirm("来自" + WebHandler.getRemoteIP(), msg)) {
-            throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
+            boolean success = f.delete();
+            if (!success) {
+                WinDropApplication.WindropHandler.alert("删除失败，请手动删除，文件路径: " + f.getAbsolutePath());
+            }
         }
     }
 }

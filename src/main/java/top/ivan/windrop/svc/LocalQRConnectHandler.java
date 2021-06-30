@@ -56,8 +56,12 @@ public class LocalQRConnectHandler {
     }
 
     public JSONObject getOption(String data) throws BadEncryptException {
-        String body = randomEncrypt.decrypt(data, true);
+        String body = randomEncrypt.decrypt(data);
         return JSONObject.parseObject(body);
+    }
+
+    public void reset() {
+        randomEncrypt.expired();
     }
 
 }

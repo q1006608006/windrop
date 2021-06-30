@@ -36,8 +36,8 @@ public class RandomAccessKey {
         while (isUpdate.get()) ;
     }
 
-    private void setExpired(long compareTime) {
-        if (isUpdate.compareAndSet(false, true)) {
+    private void equalThenExpired(long compareTime) {
+        if (compareTime == lastUpdateTime && isUpdate.compareAndSet(false, true)) {
             if (compareTime == lastUpdateTime) {
                 lastUpdateTime = compareTime - intervalMillis - 1;
             }
@@ -69,7 +69,7 @@ public class RandomAccessKey {
                     boolean status = false;
                     if (predicate.test(accessKey)) {
                         if (matchThenExpired) {
-                            setExpired(curLastUpdateTime);
+                            equalThenExpired(curLastUpdateTime);
                         }
                         status = true;
                     }
@@ -86,7 +86,7 @@ public class RandomAccessKey {
     }
 
     public void expired() {
-        setExpired(lastUpdateTime);
+        equalThenExpired(lastUpdateTime);
     }
 
     public boolean isTimeout() {
