@@ -393,7 +393,7 @@ public class SwapController {
         // 使用base64编码数据
         String data = ConvertUtil.encodeBase64(srcData);
         // 获取文件签名
-        String dataSha = DigestUtils.sha256Hex(data);
+        String dataSha = DigestUtils.sha256Hex(srcData);
         // 配合用户验证密钥签名
         String sign = DigestUtils.sha256Hex(dataSha + ";" + user.getValidKey());
 
