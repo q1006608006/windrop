@@ -134,6 +134,7 @@ public class FileSwapController {
                 if (null == user) {
                     throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
                 }
+                s.getAttributes().remove("user", user);
                 return user;
             }).flatMap(user -> fp.transferTo(p).thenReturn(CommonResponse.success("成功")).doFinally(s -> confirmFile(p.toFile(), user)));
         });
@@ -146,14 +147,18 @@ public class FileSwapController {
         Mono<String> idMono = Mono.just("id");
         Mono<String> valueMono = Mono.just("value");
 
-        return idMono.flatMap(id -> {
-            System.out.println("idMono flatMap");
+        return idMono
+                .flatMap(id -> {
+                    System.out.println("idMono flatMap");
 
-            return valueMono.map(s -> {
-                System.out.println("valueMono map");
-                return s;
-            }).flatMap(user -> Mono.fromRunnable(() -> System.out.println("valueMono flatMap")).thenReturn(CommonResponse.success("成功")).doFinally(s -> System.out.println("finally")));
-        });
+                    return valueMono.map(s -> {
+                        System.out.println("valueMono map");
+                        return s;
+                    }).flatMap(user -> Mono.fromRunnable(() -> System.out.println("valueMono flatMap"))
+                            .then(WebHandler.getExchange().getSession())
+                            .doOnSuccess(s -> System.out.println("success"))
+                            .thenReturn(CommonResponse.success("成功")).doFinally(s -> System.out.println("finally")));
+                });
     }
 
 

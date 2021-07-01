@@ -1,5 +1,8 @@
 server:
   port: ${windrop.port:8898}
+  servlet:
+    session:
+      timeout: 3h
 
 spring:
   servlet:
