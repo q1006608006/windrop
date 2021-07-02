@@ -10,8 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.WinDropApplication;
 import top.ivan.windrop.WinDropConfiguration;
@@ -91,14 +91,12 @@ public class FileSwapController {
 
     @GetMapping("upload/{key}")
     @VerifyIP
-    public Mono<String> uploadModel(@RequestParam String id, @PathVariable String key, Mono<Model> modelMono) {
+    public Mono<String> uploadModel(@RequestParam String id, @PathVariable String key) {
         AccessUser user = prepareUser(id);
         valid(key, user);
 
         return WebHandler.getExchange().getSession()
                 .doOnNext(s -> s.getAttributes().put("user", user))
-                .then(modelMono)
-                .doOnNext(model -> model.addAttribute("hidden", ""))
                 .thenReturn("upload");
     }
 
@@ -136,7 +134,9 @@ public class FileSwapController {
                 }
                 s.getAttributes().remove("user", user);
                 return user;
-            }).flatMap(user -> fp.transferTo(p).thenReturn(CommonResponse.success("成功")).doFinally(s -> confirmFile(p.toFile(), user)));
+            }).flatMap(user -> fp.transferTo(p)
+                    .thenReturn(CommonResponse.success("成功"))
+                    .doFinally(s -> confirmFile(p.toFile(), user)));
         });
     }
 
@@ -144,21 +144,11 @@ public class FileSwapController {
     @PostMapping("test")
 //    @VerifyIP
     public Mono<CommonResponse> test() {
-        Mono<String> idMono = Mono.just("id");
-        Mono<String> valueMono = Mono.just("value");
+        String ip = Mono.subscriberContext().map(ctx -> {
+            return ctx.get(ServerWebExchange.class).getRequest().getRemoteAddress().getAddress().getHostAddress();
+        }).block();
 
-        return idMono
-                .flatMap(id -> {
-                    System.out.println("idMono flatMap");
-
-                    return valueMono.map(s -> {
-                        System.out.println("valueMono map");
-                        return s;
-                    }).flatMap(user -> Mono.fromRunnable(() -> System.out.println("valueMono flatMap"))
-                            .then(WebHandler.getExchange().getSession())
-                            .doOnSuccess(s -> System.out.println("success"))
-                            .thenReturn(CommonResponse.success("成功")).doFinally(s -> System.out.println("finally")));
-                });
+        return Mono.just(CommonResponse.success("ss"));
     }
 
 
@@ -180,7 +170,9 @@ public class FileSwapController {
 
     private void valid(String key, AccessUser user) {
         if (!keyService.match(prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + WebHandler.getRemoteIP() + ";" + k).equals(key))) {
-            throw new HttpClientException(HttpStatus.FORBIDDEN, "核验未通过");
+            //出于安全角度考量，在没有合适的验证方式前，使用本功能时不建议使用代理网络
+            //方案2：快捷指令端，在扫码连接时指定被代理IP，但该方法对于不固定分配IPV4地址的网络或其他复杂网络情况可能无法奏效，且仍然存在篡改内容的风险
+            throw new HttpClientException(HttpStatus.FORBIDDEN, "核验未通过，若您使用代理网络，请关闭代理后重试");
         }
     }
 

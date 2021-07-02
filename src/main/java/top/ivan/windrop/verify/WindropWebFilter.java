@@ -23,7 +23,7 @@ public class WindropWebFilter implements WebFilter {
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         WebHandler.setExchange(exchange);
         log.debug("receive request from '{}', path: {}, method: {}", WebHandler.getRemoteAddress(), WebHandler.getRequest().getPath(), WebHandler.getRequest().getMethod());
-        return chain.filter(exchange).doFinally(s -> WebHandler.release());
+        return Mono.subscriberContext().doOnNext(ctx -> ctx.put(ServerWebExchange.class, exchange)).flatMap(ctx -> chain.filter(exchange).doFinally(s -> WebHandler.release()));
     }
 
 }

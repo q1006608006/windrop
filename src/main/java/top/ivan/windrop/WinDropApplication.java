@@ -238,6 +238,7 @@ public class WinDropApplication {
         private void clearDevice() {
             try {
                 beanHandler.userService.deleteAll();
+                alert("设备重置完成");
             } catch (IOException e) {
                 alert("重置认证设备异常");
                 log.error("reset devices failed", e);

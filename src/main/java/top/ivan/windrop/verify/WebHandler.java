@@ -2,6 +2,7 @@ package top.ivan.windrop.verify;
 
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
 
@@ -39,5 +40,9 @@ public class WebHandler {
 
     public static InetSocketAddress getRemoteAddress() {
         return getRequest().getRemoteAddress();
+    }
+
+    public static Mono<String> ip() {
+
     }
 }
