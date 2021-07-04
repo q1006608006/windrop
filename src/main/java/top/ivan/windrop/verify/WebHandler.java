@@ -2,9 +2,11 @@ package top.ivan.windrop.verify;
 
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebSession;
 import reactor.core.publisher.Mono;
+import top.ivan.windrop.ex.HttpServerException;
 
-import java.net.InetSocketAddress;
+import java.util.Objects;
 
 /**
  * @author Ivan
@@ -18,31 +20,27 @@ public class WebHandler {
         local.set(ex);
     }
 
-    public static ServerWebExchange getExchange() {
+    public static ServerWebExchange getLocalExchange() {
         ServerWebExchange ex = local.get();
         if (null == ex) {
-            throw new RuntimeException("can't supply ServerWebExchange in current");
+            throw new HttpServerException("can't supply ServerWebExchange in current");
         }
         return ex;
     }
 
-    public static void release() {
-        local.remove();
-    }
-
-    public static String getRemoteIP() {
-        return getRemoteAddress().getAddress().getHostAddress();
-    }
-
-    public static ServerHttpRequest getRequest() {
-        return getExchange().getRequest();
-    }
-
-    public static InetSocketAddress getRemoteAddress() {
-        return getRequest().getRemoteAddress();
-    }
-
     public static Mono<String> ip() {
+        return request().map(req -> Objects.requireNonNull(req.getRemoteAddress()).getAddress().getHostAddress());
+    }
 
+    public static Mono<ServerHttpRequest> request() {
+        return exchange().map(ServerWebExchange::getRequest);
+    }
+
+    public static Mono<ServerWebExchange> exchange() {
+        return Mono.subscriberContext().map(ctx -> ctx.get(ServerWebExchange.class));
+    }
+
+    public static Mono<WebSession> session() {
+        return exchange().flatMap(ServerWebExchange::getSession);
     }
 }

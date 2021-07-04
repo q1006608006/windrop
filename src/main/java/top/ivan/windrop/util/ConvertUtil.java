@@ -143,4 +143,19 @@ public class ConvertUtil {
         }
     }
 
+    private static final long KB_SIZE = 1024;
+    private static final long MB_SIZE = 1024 * KB_SIZE;
+    private static final long GB_SIZE = 1024 * MB_SIZE;
+
+    public static String toShortSize(long size) {
+        if (size > GB_SIZE) {
+            return String.format("%.2fGB", 1f * size / GB_SIZE);
+        } else if (size > MB_SIZE) {
+            return String.format("%.2fMB", 1f * size / MB_SIZE);
+        } else if (size > KB_SIZE) {
+            return String.format("%.2fKB", 1f * size / KB_SIZE);
+        } else {
+            return size + "B";
+        }
+    }
 }

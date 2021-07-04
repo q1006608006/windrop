@@ -59,6 +59,7 @@ public class WinDropApplication {
         public static final String ICON_SHOW_LOG = "查看日志";
 
         public static final String ICON_SHARE_FILE = "共享文件";
+        public static final String ICON_RECV_FILE = "已收文件";
 
         public static final String ICON_SHUTDOWN = "退出";
 
@@ -235,6 +236,15 @@ public class WinDropApplication {
             }
         }
 
+        private void openReceivedFolder() {
+            try {
+                Desktop.getDesktop().open(new File("recv"));
+            } catch (IOException e) {
+                alert("无法打开文件夹");
+                log.error("open folder failed", e);
+            }
+        }
+
         private void clearDevice() {
             try {
                 beanHandler.userService.deleteAll();
@@ -275,6 +285,7 @@ public class WinDropApplication {
                     .addLabel(ICON_SHOW_LOG, (m, t) -> showLog())
                     .addSeparator()
                     .addLabel(ICON_SHARE_FILE, (m, t) -> prepareDownload())
+                    .addLabel(ICON_RECV_FILE, (m, t) -> openReceivedFolder())
                     .addSeparator()
                     .addLabel(ICON_SHUTDOWN, (m, t) -> exit());
 

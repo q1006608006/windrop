@@ -8,6 +8,7 @@
     <!-- CDN为国外源，如不可访问请自行切换 -->
     <script src="/js/jquery-3.4.1.min.js" crossorigin="anonymous"></script>
     <script src="/js/popper.min.js" crossorigin="anonymous"></script>
+    <script src="/js/spark-md5.min.js" crossorigin="anonymous"></script>
     <!-- 引入bootstrap css&js -->
     <!-- CDN为国外源，如不可访问请自行切换 -->
     <link rel="stylesheet" href="/css/bootstrap.min.css" crossorigin="anonymous">
@@ -29,7 +30,12 @@
                     </div>
                 </div>
                 <input type="hidden" id="hidden" th:value="${hidden}">
-                <div class="empty-table"><br/><br/><br/><br/><br/></div>
+                <div class="empty-table"><br/><br/></div>
+                <div class="">
+                    <label>文件名: <font id="fileName"></font></label><br>
+                    <label>文件大小: <font id="fileSize"></font></label><br>
+                    <label>MD5: <font id="fileMd5"></font></label><br>
+                </div>
                 <div class="row mt-3">
                     <div class="col-12">
                         <div class="text-center">

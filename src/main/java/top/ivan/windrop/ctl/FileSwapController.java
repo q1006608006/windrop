@@ -11,7 +11,6 @@ import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.WinDropApplication;
 import top.ivan.windrop.WinDropConfiguration;
@@ -45,6 +44,14 @@ import java.util.Optional;
 @Controller
 @RequestMapping("/windrop/addition")
 public class FileSwapController {
+
+    static {
+        File receiveDir = new File(WinDropConfiguration.UPLOAD_FILES_PATH);
+        if (!receiveDir.exists() || !receiveDir.isDirectory()) {
+            receiveDir.mkdir();
+        }
+    }
+
     public static final String FILE_UPLOAD_APPLY_GROUP = "FILE_UPLOAD_APPLY";
     public static final String FILE_UPLOAD_GROUP = "FILE_UPLOAD";
 
@@ -71,7 +78,8 @@ public class FileSwapController {
                     filename = new String(filename.getBytes(StandardCharsets.UTF_8), "ISO_8859_1");
                     response.getHeaders().set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    log.error("server io exception", e);
+                    throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
                 }
             }
         });
@@ -93,31 +101,13 @@ public class FileSwapController {
     @VerifyIP
     public Mono<String> uploadModel(@RequestParam String id, @PathVariable String key) {
         AccessUser user = prepareUser(id);
-        valid(key, user);
 
-        return WebHandler.getExchange().getSession()
+        return WebHandler.ip()
+                .doOnNext(ip -> valid(key, user, ip))
+                .then(WebHandler.session())
                 .doOnNext(s -> s.getAttributes().put("user", user))
                 .thenReturn("upload");
     }
-
-/*
-    @ResponseBody
-    @PostMapping("upload")
-    @VerifyIP
-    public Mono<CommonResponse> fileUpload(@RequestPart("file") FilePart fp, @RequestPart("hidden") String hidden) {
-        String fn = fp.filename();
-        Path p = Paths.get(WinDropConfiguration.UPLOAD_FILES_PATH, fn);
-        return WebHandler.getExchange().getSession().map(s -> {
-            AccessUser user = s.getAttribute("user");
-            if (null == user) {
-                throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
-            }
-            return user;
-        }).flatMap(user -> {
-            return fp.transferTo(p).doFinally(s -> confirmFile(p.toFile(), user)).thenReturn(CommonResponse.success("上传成功"));
-        });
-    }
-*/
 
     @ResponseBody
     @PostMapping("upload")
@@ -127,30 +117,27 @@ public class FileSwapController {
             String fn = fp.filename();
             Path p = Paths.get(WinDropConfiguration.UPLOAD_FILES_PATH, fn);
 
-            return WebHandler.getExchange().getSession().map(s -> {
+            return WebHandler.session().map(s -> {
                 AccessUser user = s.getAttribute("user");
                 if (null == user) {
                     throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
                 }
                 s.getAttributes().remove("user", user);
                 return user;
-            }).flatMap(user -> fp.transferTo(p)
-                    .thenReturn(CommonResponse.success("成功"))
-                    .doFinally(s -> confirmFile(p.toFile(), user)));
+            }).flatMap(user ->
+                    fp.transferTo(p)
+                            .then(WebHandler.ip())
+                            .flatMap(ip -> Mono.just(CommonResponse.success("文件上传成功，请核对文件信息")).doFinally(s -> confirmFile(p.toFile(), user, ip)))
+            );
         });
     }
 
     @ResponseBody
     @PostMapping("test")
-//    @VerifyIP
-    public Mono<CommonResponse> test() {
-        String ip = Mono.subscriberContext().map(ctx -> {
-            return ctx.get(ServerWebExchange.class).getRequest().getRemoteAddress().getAddress().getHostAddress();
-        }).block();
-
-        return Mono.just(CommonResponse.success("ss"));
+    @VerifyIP
+    public CommonResponse test(@RequestParam("id") String id) {
+        return CommonResponse.success("hh");
     }
-
 
     private AccessUser prepareUser(String id) {
         try {
@@ -168,8 +155,8 @@ public class FileSwapController {
         }
     }
 
-    private void valid(String key, AccessUser user) {
-        if (!keyService.match(prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + WebHandler.getRemoteIP() + ";" + k).equals(key))) {
+    private void valid(String key, AccessUser user, String ip) {
+        if (!keyService.match(prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + ip + ";" + k).equals(key))) {
             //出于安全角度考量，在没有合适的验证方式前，使用本功能时不建议使用代理网络
             //方案2：快捷指令端，在扫码连接时指定被代理IP，但该方法对于不固定分配IPV4地址的网络或其他复杂网络情况可能无法奏效，且仍然存在篡改内容的风险
             throw new HttpClientException(HttpStatus.FORBIDDEN, "核验未通过，若您使用代理网络，请关闭代理后重试");
@@ -180,7 +167,7 @@ public class FileSwapController {
         return String.join("_", group, id);
     }
 
-    private void confirmFile(File f, AccessUser user) {
+    private void confirmFile(File f, AccessUser user, String ip) {
         String md5;
         try {
             md5 = ConvertUtil.toHex(DigestUtils.digest(DigestUtils.getMd5Digest(), f));
@@ -191,12 +178,13 @@ public class FileSwapController {
         String msg = String.format("请确认是否接收文件: %s\n" +
                 "来自设备: %s\n" +
                 "大小: %s\n" +
-                "md5摘要: %s", f.getName(), user.getAlias(), f.getTotalSpace(), md5);
-        if (!WinDropApplication.WindropHandler.confirm("来自" + WebHandler.getRemoteIP(), msg)) {
+                "md5摘要: %s", f.getName(), user.getAlias(), ConvertUtil.toShortSize(f.length()), md5);
+        if (!WinDropApplication.WindropHandler.confirm("来自" + ip, msg)) {
             boolean success = f.delete();
             if (!success) {
                 WinDropApplication.WindropHandler.alert("删除失败，请手动删除，文件路径: " + f.getAbsolutePath());
             }
         }
     }
+
 }

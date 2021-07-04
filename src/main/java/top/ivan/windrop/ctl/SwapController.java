@@ -28,8 +28,8 @@ import top.ivan.windrop.svc.ResourceSharedService;
 import top.ivan.windrop.util.ClipUtil;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
-import top.ivan.windrop.verify.WebHandler;
 import top.ivan.windrop.verify.VerifyIP;
+import top.ivan.windrop.verify.WebHandler;
 
 import java.io.File;
 import java.io.IOException;
@@ -119,8 +119,6 @@ public class SwapController {
 
         AccessUser user = prepareUser(request.getId());
         // PC上确认是否接收
-        confirm(user, request, itemType, isPush);
-
         // 返回随机密钥,用于签名
         return Mono.just(ApplyResponse.success(keyService.getKey(getSwapGroupKey(itemType, user, isPush))));
     }
@@ -455,9 +453,12 @@ public class SwapController {
         }
     }
 
-    /**
-     * 手动确认
+    /*
      */
+/**
+ * 手动确认
+ *//*
+
     private void confirm(AccessUser user, ApplyRequest request, String itemType, boolean isPush) {
         if (config.needConfirm(itemType, isPush)) {
             String msg;
@@ -489,6 +490,45 @@ public class SwapController {
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
             }
         }
+    }
+*/
+
+    /**
+     * 手动确认
+     */
+    private Mono<String> confirm(AccessUser user, ApplyRequest request, String itemType, boolean isPush) {
+        return WebHandler.ip().doOnNext(ip -> {
+            if (config.needConfirm(itemType, isPush)) {
+                String msg;
+                if (!isPush) {
+                    ClipBean bean = ClipUtil.getClipBean();
+                    String itemName;
+                    if (bean instanceof FileBean) {
+                        itemName = ((FileBean) bean).getFileName();
+                    } else {
+                        itemName = ClipUtil.getClipBeanTypeName(bean);
+                    }
+                    msg = "是否推送'" + itemName + "'到" + user.getAlias() + "?";
+                } else {
+                    switch (itemType) {
+                        case "file":
+                        case "image":
+                            msg = "是否接收来自" + user.getAlias() + "的文件/图片: " + request.getFilename() + "（" + request.getSize() + ")?";
+                            break;
+                        case "text":
+                            msg = "是否接收来自" + user.getAlias() + "的文本?";
+                            break;
+                        default:
+                            msg = "未定义请求: " + JSON.toJSONString(request);
+                            break;
+                    }
+                }
+                if (!WinDropApplication.WindropHandler.confirm("来自" + ip, msg)) {
+                    log.debug("canceled the request: {}", JSONObject.toJSONString(request));
+                    throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
+                }
+            }
+        });
     }
 
     /**

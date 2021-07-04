@@ -1,7 +1,72 @@
+function calculate(file, callBack) {
+    /*
+    * 	file 选取的文件
+    * 	callBack 回调函数可以返回获取的MD5
+    */
+    var fileReader = new FileReader(),
+        blobSlice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice,
+        chunkSize = 2097152,
+        // read in chunks of 2MB
+        chunks = Math.ceil(file.size / chunkSize),
+        currentChunk = 0,
+        spark = new SparkMD5();
+
+    fileReader.onload = function (e) {
+        spark.appendBinary(e.target.result); // append binary string
+        currentChunk++;
+
+        if (currentChunk < chunks) {
+            loadNext();
+        } else {
+            callBack(spark.end());
+        }
+    };
+
+    function loadNext() {
+        var start = currentChunk * chunkSize,
+            end = start + chunkSize >= file.size ? file.size : start + chunkSize;
+
+        fileReader.readAsBinaryString(blobSlice.call(file, start, end));
+    }
+    loadNext();
+};
+
+function toShortSize(size) {
+    let KB_SIZE = 1024;
+    let MB_SIZE = 1024 * KB_SIZE;
+    let GB_SIZE = 1024 * MB_SIZE;
+    if (size > GB_SIZE) {
+        return (size / GB_SIZE).toFixed(2) + "GB";
+    } else if (size > MB_SIZE) {
+        return (size / MB_SIZE).toFixed(2) + "MB";
+    } else if (size > KB_SIZE) {
+        return (size / KB_SIZE).toFixed(2) + "KB";
+    } else {
+        return size + "B";
+    }
+}
+
+function toShortName(name) {
+    if(name.length > 24) {
+        return name.substr(0,15) + "..." + name.substr(name.length - 7)
+    } else {
+        return name;
+    }
+}
+
 // 当input标签文件被置换
 $('.custom-file-input').on('change', function () {
-    $(this).next('.custom-file-label').html($(this)[0].files[0].name);
-    $('.custom-file-label').attr("data-browse", '');
+    let file = $(this)[0].files[0];
+    // $(this).next('.custom-file-label').html(toShortName(file.name));
+    $('.custom-file-label').attr("data-browse", '').text(toShortName(file.name));
+
+    $("#fileName").text(file.name)
+    $("#fileSize").text(toShortSize(file.size))
+    $("#fileMd5").text('（正在计算，请稍等......）');
+
+    calculate(file, function (md5) {
+        $("#fileMd5").text(md5);
+    })
     // 恢复提交按钮
     // $('button[type=submit]').prop('disabled', false);
 });
@@ -9,6 +74,10 @@ $('.custom-file-input').on('change', function () {
 $('.reset').click(function () {
     $(this).parent().prev().children('.custom-file-label').html('点击选择...');
     $('.custom-file-label').attr("data-browse", '选择文件');
+    $("#fileName").text('')
+    $("#fileSize").text('')
+    $("#fileMd5").text('')
+
     // 恢复提交按钮
     // $('button[type=submit]').prop('disabled', false);
 });
@@ -56,7 +125,7 @@ $("#uploadFileBtn").click(function (e) {
             // 添加提示框显示类
             $('#alertDiv').addClass("show");
             // 设置返回消息
-            $('#alertMsg').text(msg);
+            $('#alertMsg').text(msg.message);
             // 清空文件
             $('input[type=file]').val('');
             // 恢复提交按钮

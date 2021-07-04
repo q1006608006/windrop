@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
@@ -21,9 +22,11 @@ public class WindropWebFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        ServerHttpRequest request = exchange.getRequest();
+        log.debug("receive request from '{}', path: {}, method: {}", request.getRemoteAddress(), request.getPath(), request.getMethod());
+
         WebHandler.setExchange(exchange);
-        log.debug("receive request from '{}', path: {}, method: {}", WebHandler.getRemoteAddress(), WebHandler.getRequest().getPath(), WebHandler.getRequest().getMethod());
-        return Mono.subscriberContext().doOnNext(ctx -> ctx.put(ServerWebExchange.class, exchange)).flatMap(ctx -> chain.filter(exchange).doFinally(s -> WebHandler.release()));
+        return chain.filter(exchange).subscriberContext(ctx -> ctx.put(ServerWebExchange.class, exchange));
     }
 
 }
