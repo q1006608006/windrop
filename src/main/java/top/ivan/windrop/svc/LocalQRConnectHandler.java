@@ -8,10 +8,7 @@ import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.ex.BadEncryptException;
 import top.ivan.windrop.random.RandomEncrypt;
 import top.ivan.windrop.util.IDUtil;
-import top.ivan.windrop.util.SystemUtil;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 import static top.ivan.windrop.WinDropConfiguration.CONNECT_GROUP;
@@ -22,27 +19,27 @@ import static top.ivan.windrop.WinDropConfiguration.CONNECT_GROUP;
  * @date 2021/3/31
  */
 @Service
-public class LocalQRConnectHandler {
+public class LocalQRConnectHandler extends LocalQRHandler {
 
     @Autowired
     private QrCodeControllerService qrCodeService;
-    @Autowired
-    private WindropConfig config;
     @Autowired
     private RandomAccessKeyService keyService;
 
     private final RandomEncrypt randomEncrypt = new RandomEncrypt(90);
 
+    public LocalQRConnectHandler(WindropConfig config) {
+        super(config);
+    }
+
     public String newConnect(int second) {
-        JSONObject qrData = new JSONObject();
-        qrData.put("type", "connect");
-        List<String> ipList = new ArrayList<>(SystemUtil.getLocalIPList());
-        ipList.remove("127.0.0.1");
-        qrData.put("ipList", ipList);
-        qrData.put("token", keyService.getKey(CONNECT_GROUP));
-        qrData.put("port", config.getPort());
+        JSONObject qrData = baseRequest("connect");
+
+        String token = keyService.getKey(CONNECT_GROUP);
+        qrData.put("token", token);
         JSONObject option = new JSONObject();
         option.put("maxAccess", second);
+        option.put("token", token);
         option.put("salt", IDUtil.getShortUuid());
         String encryptData = randomEncrypt.encrypt(option.toJSONString());
         qrData.put("data", encryptData);

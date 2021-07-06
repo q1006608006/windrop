@@ -28,7 +28,6 @@ public class WindropConfig {
     private String password;
     private long maxFileLength;
     private String encoding;
-    private String validKey;
     private boolean enableShowText;
     private List<String> notify;
     private List<String> confirm;

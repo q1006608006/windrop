@@ -16,6 +16,7 @@ import top.ivan.windrop.WinDropApplication;
 import top.ivan.windrop.bean.AccessUser;
 import top.ivan.windrop.bean.ConnectRequest;
 import top.ivan.windrop.bean.ConnectResponse;
+import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.ex.BadEncryptException;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
@@ -48,6 +49,9 @@ public class ConnectController {
      */
     @Autowired
     private LocalQRConnectHandler handler;
+
+    @Autowired
+    private WindropConfig config;
 
     /**
      * 与windrop创建连接或更新连接
@@ -94,9 +98,10 @@ public class ConnectController {
             // 生成设备ID及验证密钥
             String uid = generateId(request.getDeviceId(), request.getLocate());
             String validKey = IDUtil.get32UUID();
+            String realPwd = DigestUtils.sha256Hex(String.join(";", validKey, config.getPassword(), option.getString("token")));
             try {
                 // 创建并持久化用户信息
-                AccessUser user = userService.newUser(uid, request.getDeviceId(), validKey, maxAccess);
+                AccessUser user = userService.newUser(uid, request.getDeviceId(), realPwd, maxAccess);
                 log.info("accept new connector for {}[{}]", user.getAlias(), user.getId());
 
                 // 返回成功

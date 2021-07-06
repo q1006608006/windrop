@@ -4,8 +4,8 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.util.IDUtil;
-import top.ivan.windrop.util.SystemUtil;
 
 import java.io.File;
 
@@ -15,7 +15,7 @@ import java.io.File;
  */
 @Slf4j
 @Service
-public class LocalQRFileSharedHandler {
+public class LocalQRFileSharedHandler extends LocalQRHandler {
 
     @Autowired
     private ResourceSharedService sharedService;
@@ -23,14 +23,19 @@ public class LocalQRFileSharedHandler {
     @Autowired
     private QrCodeControllerService qrCodeService;
 
+    public LocalQRFileSharedHandler(WindropConfig config) {
+        super(config);
+    }
+
     public String sharedFile(File file, int count, int second) {
         String sharedKey = IDUtil.getShortUuid();
         sharedService.register(sharedKey, file, count, second);
-        JSONObject obj = new JSONObject();
-        obj.put("type", "file");
+
+        JSONObject obj = baseRequest("file");
         obj.put("code", sharedKey);
-        obj.put("ipList", SystemUtil.getLocalIPList());
+
         String qrCodeBody = obj.toJSONString();
+
         log.info("share file[{}] with key '{}'", file.getName(), sharedKey);
         return qrCodeService.register(key -> qrCodeBody, count, second);
     }
