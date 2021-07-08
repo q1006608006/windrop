@@ -22,7 +22,7 @@ public abstract class LocalQRHandler {
 
     public JSONObject baseRequest(String type) {
         JSONObject qrData = new JSONObject();
-        qrData.put("type", "connect");
+        qrData.put("type", type);
         List<String> ipList = new ArrayList<>(SystemUtil.getLocalIPList());
         ipList.remove("127.0.0.1");
         qrData.put("ipList", ipList);

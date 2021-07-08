@@ -120,7 +120,9 @@ public class SwapController {
         AccessUser user = prepareUser(request.getId());
         // PC上确认是否接收
         // 返回随机密钥,用于签名
-        return Mono.just(ApplyResponse.success(keyService.getKey(getSwapGroupKey(itemType, user, isPush))));
+        return WebHandler.ip()
+                .doOnNext(ip -> confirm(user, request, ip, itemType, isPush))
+                .then(Mono.fromSupplier(() -> ApplyResponse.success(keyService.getKey(getSwapGroupKey(itemType, user, isPush)))));
     }
 
     /**
@@ -453,13 +455,7 @@ public class SwapController {
         }
     }
 
-    /*
-     */
-/**
- * 手动确认
- *//*
-
-    private void confirm(AccessUser user, ApplyRequest request, String itemType, boolean isPush) {
+    private void confirm(AccessUser user, ApplyRequest request, String ip, String itemType, boolean isPush) {
         if (config.needConfirm(itemType, isPush)) {
             String msg;
             if (!isPush) {
@@ -485,50 +481,11 @@ public class SwapController {
                         break;
                 }
             }
-            if (!WinDropApplication.WindropHandler.confirm("来自" + WebHandler.getRemoteIP(), msg)) {
+            if (!WinDropApplication.WindropHandler.confirm("来自" + ip, msg)) {
                 log.debug("canceled the request: {}", JSONObject.toJSONString(request));
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
             }
         }
-    }
-*/
-
-    /**
-     * 手动确认
-     */
-    private Mono<String> confirm(AccessUser user, ApplyRequest request, String itemType, boolean isPush) {
-        return WebHandler.ip().doOnNext(ip -> {
-            if (config.needConfirm(itemType, isPush)) {
-                String msg;
-                if (!isPush) {
-                    ClipBean bean = ClipUtil.getClipBean();
-                    String itemName;
-                    if (bean instanceof FileBean) {
-                        itemName = ((FileBean) bean).getFileName();
-                    } else {
-                        itemName = ClipUtil.getClipBeanTypeName(bean);
-                    }
-                    msg = "是否推送'" + itemName + "'到" + user.getAlias() + "?";
-                } else {
-                    switch (itemType) {
-                        case "file":
-                        case "image":
-                            msg = "是否接收来自" + user.getAlias() + "的文件/图片: " + request.getFilename() + "（" + request.getSize() + ")?";
-                            break;
-                        case "text":
-                            msg = "是否接收来自" + user.getAlias() + "的文本?";
-                            break;
-                        default:
-                            msg = "未定义请求: " + JSON.toJSONString(request);
-                            break;
-                    }
-                }
-                if (!WinDropApplication.WindropHandler.confirm("来自" + ip, msg)) {
-                    log.debug("canceled the request: {}", JSONObject.toJSONString(request));
-                    throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
-                }
-            }
-        });
     }
 
     /**

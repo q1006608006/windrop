@@ -53,9 +53,6 @@ public class FileSwapController {
     }
 
     public static final String FILE_UPLOAD_APPLY_GROUP = "FILE_UPLOAD_APPLY";
-    public static final String FILE_UPLOAD_GROUP = "FILE_UPLOAD";
-
-    public static final int UPLOAD_TIMEOUT = Integer.MAX_VALUE;
 
     @Autowired
     private ResourceSharedService resourceSharedService;
