@@ -28,16 +28,16 @@ public class LocalQRFileSharedHandler extends LocalQRHandler {
     }
 
     public String sharedFile(File file, int count, int second) {
-        String sharedKey = IDUtil.getShortUuid();
-        sharedService.register(sharedKey, file, count, second);
+        return qrCodeService.register(key -> {
+            String sharedKey = IDUtil.getShortUuid();
+            sharedService.register(sharedKey, file, 1, second);
 
-        JSONObject obj = baseRequest("file");
-        obj.put("code", sharedKey);
+            JSONObject obj = baseRequest("file");
+            obj.put("code", sharedKey);
 
-        String qrCodeBody = obj.toJSONString();
-
-        log.info("share file[{}] with key '{}'", file.getName(), sharedKey);
-        return qrCodeService.register(key -> qrCodeBody, count, second);
+            log.info("share file[{}] with key '{}'", file.getName(), sharedKey);
+            return obj.toJSONString();
+        }, count, second);
     }
 
 }

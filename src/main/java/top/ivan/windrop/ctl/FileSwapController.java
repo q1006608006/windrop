@@ -66,7 +66,7 @@ public class FileSwapController {
     public Mono<Resource> download(@PathVariable String key, ServerHttpResponse response) {
         Resource res = resourceSharedService.findResource(key);
         if (null == res) {
-            return Mono.error(new HttpClientException(HttpStatus.NOT_FOUND, "not found"));
+            return Mono.error(new HttpClientException(HttpStatus.NOT_FOUND, "资源不存在或已过期"));
         }
         return Mono.just(res).doOnNext(resource -> {
             if (resource.isFile()) {

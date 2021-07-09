@@ -2,6 +2,7 @@ package top.ivan.windrop.ctl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -39,6 +40,6 @@ public class MyExceptionHandler {
             log.error("未知异常", e);
         }
 
-        return ResponseEntity.status(status).body(data);
+        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON_UTF8).body(data);
     }
 }

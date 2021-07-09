@@ -56,16 +56,5 @@ public class QrCodeController {
                 throw new HttpClientException(HttpStatus.REQUEST_TIMEOUT, "二维码已失效");
             }
         });
-/*        try {
-            String data = service.getData(id);
-            byte[] qrCodeBody = ConvertUtil.getQrCodeImageBytes(data, WIDTH, HEIGHT, FORMAT);
-            return ServerResponse.ok().header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE).bodyValue(qrCodeBody);
-        } catch (WriterException | IOException e) {
-            log.error("生成二维码失败", e);
-            throw new HttpClientException(HttpStatus.INTERNAL_SERVER_ERROR, "生成二维码失败");
-        } catch (CacheNotFoundException e) {
-            throw new HttpClientException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }*/
-
     }
 }
