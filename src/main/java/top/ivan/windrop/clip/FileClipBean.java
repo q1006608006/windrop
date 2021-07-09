@@ -139,4 +139,8 @@ public class FileClipBean implements ClipBean, FileBean {
         }
     }
 
+    @Override
+    public String toString() {
+        return getFile().getAbsolutePath();
+    }
 }

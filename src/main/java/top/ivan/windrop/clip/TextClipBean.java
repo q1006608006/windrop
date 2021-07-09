@@ -39,4 +39,13 @@ public class TextClipBean implements ClipBean {
     public boolean isOrigin(Object target) throws IOException {
         return this.text.equals(target);
     }
+
+    public String getText() {
+        return text;
+    }
+
+    @Override
+    public String toString() {
+        return text;
+    }
 }

@@ -54,4 +54,9 @@ public class ImageFileClipBean extends ImageClipBean implements FileBean {
     public String getFileName() {
         return file.getName();
     }
+
+    @Override
+    public String toString() {
+        return file.getAbsolutePath();
+    }
 }

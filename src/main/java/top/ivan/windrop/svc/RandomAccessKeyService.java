@@ -2,8 +2,8 @@ package top.ivan.windrop.svc;
 
 
 import org.springframework.stereotype.Service;
-import top.ivan.windrop.util.QueuedConcurrentMap;
 import top.ivan.windrop.random.RandomAccessKey;
+import top.ivan.windrop.util.QueuedConcurrentMap;
 
 import java.util.Map;
 import java.util.function.Predicate;
@@ -29,6 +29,11 @@ public class RandomAccessKeyService {
     public boolean match(String group, Predicate<String> test) {
         RandomAccessKey key = groupMap.get(group);
         return key != null && key.match(test, true);
+    }
+
+    public boolean test(String group, Predicate<String> test) {
+        RandomAccessKey key = groupMap.get(group);
+        return key != null && key.match(test, false);
     }
 
 }

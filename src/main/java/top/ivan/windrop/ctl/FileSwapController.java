@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Optional;
 
 /**
@@ -82,6 +83,17 @@ public class FileSwapController {
         });
     }
 
+    @RequestMapping(value = "download/{key}", method = {RequestMethod.HEAD})
+    @ResponseBody
+    public Mono<HttpHeaders> downloadTest(@PathVariable String key) {
+        return WebHandler.ip().map(ip -> {
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("accessible", String.valueOf(resourceSharedService.containsResource(key)));
+            headers.add("source", ip);
+            return headers;
+        });
+    }
+
     /**
      * 获取上传请求accessKey
      *
@@ -91,7 +103,7 @@ public class FileSwapController {
     @PostMapping("upload/apply")
     @VerifyIP
     public Mono<ApplyResponse> uploadApply(@RequestBody ApplyRequest request) {
-        return Mono.just(ApplyResponse.success(keyService.getKey(prepareKey(request.getId(), FILE_UPLOAD_APPLY_GROUP), 30)));
+        return Mono.just(ApplyResponse.success(keyService.getKey(prepareKey(request.getId(), FILE_UPLOAD_APPLY_GROUP), 90)));
     }
 
     @GetMapping("upload/{key}")
@@ -104,6 +116,21 @@ public class FileSwapController {
                 .then(WebHandler.session())
                 .doOnNext(s -> s.getAttributes().put("user", user))
                 .thenReturn("upload");
+    }
+
+    @RequestMapping(value = "upload/{key}", method = RequestMethod.HEAD)
+    @VerifyIP
+    public Mono<HttpHeaders> uploadTest(@RequestParam String id, @PathVariable String key) {
+        return WebHandler.ip()
+                .map(ip -> {
+                    AccessUser user = prepareUser(id);
+                    boolean result = keyService.test(prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(String.join(";", user.getValidKey(), ip, k)).equals(key));
+
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.add("accessible", String.valueOf(result));
+                    headers.add("source", ip);
+                    return headers;
+                });
     }
 
     @ResponseBody
@@ -127,13 +154,6 @@ public class FileSwapController {
                             .flatMap(ip -> Mono.just(CommonResponse.success("文件上传成功，请核对文件信息")).doFinally(s -> confirmFile(p.toFile(), user, ip)))
             );
         });
-    }
-
-    @ResponseBody
-    @PostMapping("test")
-    @VerifyIP
-    public CommonResponse test(@RequestParam("id") String id) {
-        return CommonResponse.success("hh");
     }
 
     private AccessUser prepareUser(String id) {
@@ -184,4 +204,15 @@ public class FileSwapController {
         }
     }
 
+    @RequestMapping(value = "test", method = {RequestMethod.HEAD})
+    @ResponseBody
+    public Mono<?> test(String id) {
+        System.out.println(id);
+
+        if ("1".equals(id)) {
+            return Mono.just(Collections.singletonMap("test", id));
+        } else {
+            throw new HttpClientException(HttpStatus.NOT_FOUND, "no");
+        }
+    }
 }

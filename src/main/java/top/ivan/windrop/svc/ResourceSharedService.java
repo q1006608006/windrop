@@ -71,6 +71,10 @@ public class ResourceSharedService {
         return target.get();
     }
 
+    public boolean containsResource(String key) {
+        return resourceMap.containsKey(key);
+    }
+
     public void remove(String key) {
         resourceMap.remove(key);
     }

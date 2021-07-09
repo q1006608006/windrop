@@ -73,4 +73,9 @@ public class ImageClipBean implements ClipBean {
         }
         return image;
     }
+
+    @Override
+    public String toString() {
+        return "@image";
+    }
 }

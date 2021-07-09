@@ -38,7 +38,7 @@ public class WindropConfig {
             return false;
         }
         String iType = type.toLowerCase();
-        return notify.stream().map(String::toLowerCase).anyMatch(s -> s.equals("*") || s.equals(iType) || s.equals(isPush ? "isPush.*" : "pull.*") || s.equals((isPush ? "isPush." : "pull.") + iType));
+        return notify.stream().map(String::toLowerCase).anyMatch(s -> s.equals("*") || s.equals(iType) || s.equals(isPush ? "push.*" : "pull.*") || s.equals((isPush ? "push." : "pull.") + iType));
     }
 
     public boolean needConfirm(String type, boolean push) {

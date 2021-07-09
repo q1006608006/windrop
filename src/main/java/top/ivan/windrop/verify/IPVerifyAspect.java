@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.ex.HttpClientException;
+import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.ex.UnCatchableException;
 
 import java.util.function.Supplier;
@@ -41,6 +42,8 @@ public class IPVerifyAspect {
         Supplier<?> supplier = () -> {
             try {
                 return pjp.proceed();
+            } catch (HttpClientException | HttpServerException e) {
+                throw e;
             } catch (Throwable throwable) {
                 throw new UnCatchableException(throwable);
             }
