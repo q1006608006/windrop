@@ -104,8 +104,9 @@ public class FileSwapController {
     @ResponseBody
     @PostMapping("upload/apply")
     @VerifyIP
-    public Mono<ApplyResponse> uploadApply(@RequestBody ApplyRequest request) {
-        return validService.takeValidKey(prepareKey(request.getId(), FILE_UPLOAD_APPLY_GROUP), 90).map(ApplyResponse::success);
+    public Mono<ApplyResponse> uploadApply(@RequestBody Mono<ApplyRequest> reqMono) {
+        return reqMono.map(req -> prepareKey(req.getId(), FILE_UPLOAD_APPLY_GROUP))
+                .map(group -> ApplyResponse.success(validService.getValidKey(group, 90)));
     }
 
     @GetMapping("upload/{key}")

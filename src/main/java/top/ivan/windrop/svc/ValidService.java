@@ -27,17 +27,8 @@ public class ValidService {
         });
     }
 
-    public Mono<String> takeValidKey(String group, int timeout) {
-        return Mono.just(keyService.getKey(group, timeout));
-    }
-
-    public Mono<String> digest(AccessUser user, String... patterns) {
-        return WebHandler.ip().map(ip -> {
-/*            String key = keyService.getKey(group, timeout);
-            String[] args = parsePatterns(key, user.getValidKey(), ip, patterns);
-            return DigestUtils.sha256Hex(String.join(";", args));*/
-            return "";
-        });
+    public String getValidKey(String group, int timeout) {
+        return keyService.getKey(group, timeout);
     }
 
 }

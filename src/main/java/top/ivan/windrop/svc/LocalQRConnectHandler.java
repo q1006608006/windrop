@@ -23,8 +23,9 @@ public class LocalQRConnectHandler extends LocalQRHandler {
 
     @Autowired
     private QrCodeControllerService qrCodeService;
+
     @Autowired
-    private RandomAccessKeyService keyService;
+    private ValidService validService;
 
     private final RandomEncrypt randomEncrypt = new RandomEncrypt(90);
 
@@ -35,7 +36,7 @@ public class LocalQRConnectHandler extends LocalQRHandler {
     public String newConnect(int second) {
         JSONObject qrData = baseRequest("connect");
 
-        String token = keyService.getKey(CONNECT_GROUP);
+        String token = validService.getValidKey(CONNECT_GROUP, 90);
         qrData.put("token", token);
         JSONObject option = new JSONObject();
         option.put("maxAccess", second);
@@ -49,7 +50,7 @@ public class LocalQRConnectHandler extends LocalQRHandler {
     }
 
     public boolean match(String locate, String deviceId, String sign) {
-        return keyService.match(CONNECT_GROUP, key -> Objects.equals(DigestUtils.sha256Hex(String.join(";", locate, deviceId, key, config.getPassword())), sign));
+        return keyService.match(CONNECT_GROUP, key -> Objects.equals(DigestUtils.sha256Hex(String.join(";", locate, deviceId, key)), sign));
     }
 
     public JSONObject getOption(String data) throws BadEncryptException {

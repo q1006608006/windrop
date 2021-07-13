@@ -48,7 +48,7 @@ public class ConnectController {
      * 与本控制器共享数据的handler
      */
     @Autowired
-    private LocalQRConnectHandler handler;
+    private LocalQRConnectHandler connectHandler;
 
     @Autowired
     private WindropConfig config;
@@ -73,7 +73,7 @@ public class ConnectController {
                 throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
             }
             // 验证设备有效性(sha256(wifi名称,设备ID,randomKey,核验密钥))
-            if (!handler.match(request.getLocate(), request.getDeviceId(), request.getSign())) {
+            if (!connectHandler.match(request.getLocate(), request.getDeviceId(), request.getSign())) {
                 log.info("valid failed, reject it");
                 throw new HttpClientException(HttpStatus.UNAUTHORIZED, "未通过核验");
             }
@@ -84,7 +84,7 @@ public class ConnectController {
             Integer maxAccess;
             try {
                 // 解密二维码附带加密数据（连接参数）
-                option = handler.getOption(request.getData());
+                option = connectHandler.getOption(request.getData());
                 maxAccess = option.getInteger("maxAccess");
             } catch (BadEncryptException e) {
                 throw new HttpClientException(HttpStatus.BAD_REQUEST, "数据无效或过期");
@@ -93,7 +93,7 @@ public class ConnectController {
             if (!confirm(maxAccess, request, remoteAddress.getAddress().getHostAddress())) {
                 return failure("拒绝连接");
             } else {
-                handler.reset();
+                connectHandler.reset();
             }
             // 生成设备ID及验证密钥
             String uid = generateId(request.getDeviceId(), request.getLocate());

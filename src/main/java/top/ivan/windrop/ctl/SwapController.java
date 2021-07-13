@@ -119,8 +119,7 @@ public class SwapController {
                     // PC上确认是否接收
                     .doOnNext(ip -> confirm(user, request, ip, itemType, isPush))
                     // 返回随机密钥,用于签名
-                    .then(validService.takeValidKey(getSwapGroupKey(itemType, user, isPush), 90))
-                    .map(ApplyResponse::success);
+                    .map(v -> ApplyResponse.success(validService.getValidKey(getSwapGroupKey(itemType, user, isPush), 90)));
         });
     }
 
