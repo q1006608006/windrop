@@ -22,8 +22,8 @@ import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.ex.LengthTooLargeException;
 import top.ivan.windrop.svc.PersistUserService;
-import top.ivan.windrop.svc.RandomAccessKeyService;
 import top.ivan.windrop.svc.ResourceSharedService;
+import top.ivan.windrop.svc.ValidService;
 import top.ivan.windrop.util.ClipUtil;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Objects;
 
 /**
  * @author Ivan
@@ -74,11 +73,8 @@ public class SwapController {
     @Autowired
     private ResourceSharedService sharedService;
 
-    /**
-     * 随机密钥服务
-     */
     @Autowired
-    private RandomAccessKeyService keyService;
+    private ValidService validService;
 
     /**
      * 定时清理临时文件
@@ -123,7 +119,8 @@ public class SwapController {
                     // PC上确认是否接收
                     .doOnNext(ip -> confirm(user, request, ip, itemType, isPush))
                     // 返回随机密钥,用于签名
-                    .then(Mono.fromSupplier(() -> ApplyResponse.success(keyService.getKey(getSwapGroupKey(itemType, user, isPush)))));
+                    .then(validService.takeValidKey(getSwapGroupKey(itemType, user, isPush), 90))
+                    .map(ApplyResponse::success);
         });
     }
 
@@ -151,10 +148,9 @@ public class SwapController {
             AccessUser user = prepareUser(request.getId());
 
             // 验证签名
-            validPushRequest(user, request, data);
-
-            // 更新剪贴板内容
-            return Mono.fromSupplier(() -> set2Clipboard(request, data, user))
+            return validPushRequest(user, request, data)
+                    // 更新剪贴板内容
+                    .map(r -> set2Clipboard(request, data, user))
                     .flatMap(bean ->
                             // 返回成功结果
                             Mono.just(CommonResponse.success("更新成功"))
@@ -180,12 +176,12 @@ public class SwapController {
             // 获取剪贴板信息
             ClipBean clipBean = ClipUtil.getClipBean();
 
-            // 验证签名
-            validPullRequest(user, request, ClipUtil.getClipBeanType(clipBean));
 
-            // 返回封装的内容
-            return Mono.fromSupplier(() -> prepareWindropResponse(clipBean, user)) // 封装剪切板内容
-                    // 当数据文件过大返回转浏览器下载协议
+            // 1.验证签名
+            return validPullRequest(user, request, ClipUtil.getClipBeanType(clipBean))
+                    // 2.封装剪切板内容
+                    .map(r -> prepareWindropResponse(clipBean, user))
+                    // 2.当数据文件过大返回转浏览器下载协议
                     .onErrorResume(LengthTooLargeException.class, e -> WebHandler.ip().flatMap(ip -> Mono.just(prepareRedirectResponse(clipBean, user, ip))))
                     // 请求完成后发起系统通知
                     .doOnSuccess(s -> systemNotify(s.getType(), user, clipBean, false));
@@ -199,10 +195,13 @@ public class SwapController {
      * @param request push请求
      * @param data    push的数据（减少base64解码次数）
      */
-    private void validPushRequest(AccessUser user, WindropRequest request, byte[] data) {
-        if (!keyService.match(getSwapGroupKey(request.getType(), user, true), key -> Objects.equals(DigestUtils.sha256Hex(DigestUtils.sha256Hex(data) + ";" + key + ";" + user.getValidKey()), request.getSign()))) {
-            throw new HttpClientException(HttpStatus.FORBIDDEN, "权限校验失败");
-        }
+    private Mono<Boolean> validPushRequest(AccessUser user, WindropRequest request, byte[] data) {
+        String group = getSwapGroupKey(request.getType(), user, true);
+        String dataSha = DigestUtils.sha256Hex(data);
+        return validService.valid(group, request.getSign(), user, dataSha)
+                .doOnNext(success -> {
+                    if (!success) throw new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆");
+                });
     }
 
     /**
@@ -212,10 +211,12 @@ public class SwapController {
      * @param request    pull请求
      * @param targetType 目标类型
      */
-    private void validPullRequest(AccessUser user, WindropRequest request, String targetType) {
-        if (!keyService.match(getSwapGroupKey(targetType, user, false), key -> Objects.equals(DigestUtils.sha256Hex(key + ";" + user.getValidKey()), request.getSign()))) {
-            throw new HttpClientException(HttpStatus.FORBIDDEN, "权限校验失败");
-        }
+    private Mono<Boolean> validPullRequest(AccessUser user, WindropRequest request, String targetType) {
+        String group = getSwapGroupKey(targetType, user, false);
+        return validService.valid(group, request.getSign(), user)
+                .doOnNext(success -> {
+                    if (!success) throw new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆");
+                });
     }
 
     private AccessUser prepareUser(String id) {
@@ -502,11 +503,8 @@ public class SwapController {
      * 获取交换随机密钥
      */
     private String getSwapGroupKey(String itemType, AccessUser user, boolean isPush) {
-        if (isPush) {
-            return String.join("_", WinDropConfiguration.SWAP_GROUP, user.getId(), "push", itemType);
-        } else {
-            return String.join("_", WinDropConfiguration.SWAP_GROUP, "pull", itemType);
-        }
+        String type = isPush ? "push" : "pull";
+        return ConvertUtil.combines("_", WinDropConfiguration.SWAP_GROUP, user.getId(), type, itemType);
     }
 
     private static String formatName(String src) {

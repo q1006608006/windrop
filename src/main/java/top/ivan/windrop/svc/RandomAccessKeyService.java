@@ -16,7 +16,7 @@ import java.util.function.Predicate;
 @Service
 public class RandomAccessKeyService {
 
-    private final Map<String, RandomAccessKey> groupMap = new QueuedConcurrentMap<>(256);
+    private final Map<String, RandomAccessKey> groupMap = new QueuedConcurrentMap<>(1024);
 
     public String getKey(String group) {
         return groupMap.computeIfAbsent(group, g -> new RandomAccessKey(30)).getAccessKey();

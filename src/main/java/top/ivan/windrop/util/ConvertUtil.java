@@ -158,4 +158,20 @@ public class ConvertUtil {
             return size + "B";
         }
     }
+
+    public static String combines(String delimiter, Object... patterns) {
+        if (null == patterns) {
+            return "";
+        }
+        StringBuilder bd = new StringBuilder();
+        for (Object pat : patterns) {
+            if (pat instanceof Object[]) {
+                bd.append(combines(delimiter, (Object[]) pat));
+            } else if (null != pat) {
+                bd.append(pat).append(delimiter);
+            }
+        }
+        bd.deleteCharAt(bd.length() - 1);
+        return bd.toString();
+    }
 }

@@ -21,8 +21,8 @@ import top.ivan.windrop.bean.CommonResponse;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.svc.PersistUserService;
-import top.ivan.windrop.svc.RandomAccessKeyService;
 import top.ivan.windrop.svc.ResourceSharedService;
+import top.ivan.windrop.svc.ValidService;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
 import top.ivan.windrop.verify.VerifyIP;
@@ -57,10 +57,12 @@ public class FileSwapController {
 
     @Autowired
     private ResourceSharedService resourceSharedService;
-    @Autowired
-    private RandomAccessKeyService keyService;
+
     @Autowired
     private PersistUserService userService;
+
+    @Autowired
+    private ValidService validService;
 
     @ResponseBody
     @GetMapping(value = "download/{key}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
@@ -103,7 +105,7 @@ public class FileSwapController {
     @PostMapping("upload/apply")
     @VerifyIP
     public Mono<ApplyResponse> uploadApply(@RequestBody ApplyRequest request) {
-        return Mono.just(ApplyResponse.success(keyService.getKey(prepareKey(request.getId(), FILE_UPLOAD_APPLY_GROUP), 90)));
+        return validService.takeValidKey(prepareKey(request.getId(), FILE_UPLOAD_APPLY_GROUP), 90).map(ApplyResponse::success);
     }
 
     @GetMapping("upload/{key}")
@@ -111,13 +113,13 @@ public class FileSwapController {
     public Mono<String> uploadModel(@RequestParam String id, @PathVariable String key) {
         AccessUser user = prepareUser(id);
 
-        return WebHandler.ip()
-                .doOnNext(ip -> valid(key, user, ip))
+        return valid(key, user)
                 .then(WebHandler.session())
                 .doOnNext(s -> s.getAttributes().put("user", user))
                 .thenReturn("upload");
     }
 
+/*
     @RequestMapping(value = "upload/{key}", method = RequestMethod.HEAD)
     @VerifyIP
     public Mono<HttpHeaders> uploadTest(@RequestParam String id, @PathVariable String key) {
@@ -132,6 +134,7 @@ public class FileSwapController {
                     return headers;
                 });
     }
+*/
 
     @ResponseBody
     @PostMapping("upload")
@@ -172,12 +175,12 @@ public class FileSwapController {
         }
     }
 
-    private void valid(String key, AccessUser user, String ip) {
-        if (!keyService.match(prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(user.getValidKey() + ";" + ip + ";" + k).equals(key))) {
-            //出于安全角度考量，在没有合适的验证方式前，使用本功能时不建议使用代理网络
-            //方案2：快捷指令端，在扫码连接时指定被代理IP，但该方法对于不固定分配IPV4地址的网络或其他复杂网络情况可能无法奏效，且仍然存在篡改内容的风险
-            throw new HttpClientException(HttpStatus.FORBIDDEN, "核验未通过，若您使用代理网络，请关闭代理后重试");
-        }
+    private Mono<Boolean> valid(String sign, AccessUser user) {
+        String group = prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP);
+        return validService.valid(group, sign, user)
+                .doOnNext(success -> {
+                    if (!success) throw new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆");
+                });
     }
 
     private String prepareKey(String id, String group) {
