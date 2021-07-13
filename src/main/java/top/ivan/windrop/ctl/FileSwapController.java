@@ -178,7 +178,7 @@ public class FileSwapController {
 
     private Mono<Boolean> valid(String sign, AccessUser user) {
         String group = prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP);
-        return validService.valid(group, sign, user)
+        return validService.valid(group, sign, user.getValidKey())
                 .doOnNext(success -> {
                     if (!success) throw new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆");
                 });

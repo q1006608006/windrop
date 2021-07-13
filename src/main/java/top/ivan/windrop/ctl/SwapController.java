@@ -197,7 +197,7 @@ public class SwapController {
     private Mono<Boolean> validPushRequest(AccessUser user, WindropRequest request, byte[] data) {
         String group = getSwapGroupKey(request.getType(), user, true);
         String dataSha = DigestUtils.sha256Hex(data);
-        return validService.valid(group, request.getSign(), user, dataSha)
+        return validService.valid(group, request.getSign(), user.getValidKey(), dataSha)
                 .doOnNext(success -> {
                     if (!success) throw new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆");
                 });
@@ -212,7 +212,7 @@ public class SwapController {
      */
     private Mono<Boolean> validPullRequest(AccessUser user, WindropRequest request, String targetType) {
         String group = getSwapGroupKey(targetType, user, false);
-        return validService.valid(group, request.getSign(), user)
+        return validService.valid(group, request.getSign(), user.getValidKey())
                 .doOnNext(success -> {
                     if (!success) throw new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆");
                 });

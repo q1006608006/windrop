@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,20 +12,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.WinDropApplication;
+import top.ivan.windrop.WinDropConfiguration;
 import top.ivan.windrop.bean.AccessUser;
 import top.ivan.windrop.bean.ConnectRequest;
 import top.ivan.windrop.bean.ConnectResponse;
 import top.ivan.windrop.bean.WindropConfig;
-import top.ivan.windrop.ex.BadEncryptException;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.svc.LocalQRConnectHandler;
 import top.ivan.windrop.svc.PersistUserService;
+import top.ivan.windrop.svc.ValidService;
+import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
 import top.ivan.windrop.util.SystemUtil;
+import top.ivan.windrop.verify.WebHandler;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 
 /**
  * @author Ivan
@@ -53,70 +54,79 @@ public class ConnectController {
     @Autowired
     private WindropConfig config;
 
+    @Autowired
+    private ValidService validService;
+
     /**
      * 与windrop创建连接或更新连接
      *
      * @param mono 连接请求
-     * @param shr  web请求信息
      * @return 连接windrop的id和validKey
      */
     @PostMapping("connect")
-    public Mono<ConnectResponse> connect(@RequestBody Mono<ConnectRequest> mono, ServerHttpRequest shr) {
-        InetSocketAddress remoteAddress = shr.getRemoteAddress();
-        log.info("receive decrypt request from '{}'", remoteAddress);
+    public Mono<ConnectResponse> connect(@RequestBody Mono<ConnectRequest> mono) {
+        return valid(mono).flatMap(request ->
+                WebHandler.request()
+                        .map(req -> req.getRemoteAddress().getAddress().getHostAddress())
+                        .flatMap(host -> {
+                            // 连接参数
+                            JSONObject option = connectHandler.getOption(request.getData());
+                            // 弹窗确认是否同意连接
+                            if (!confirm(option, request, host)) {
+                                return Mono.just(failure("拒绝连接"));
+                            } else {
+                                connectHandler.reset();
+                                return createUser(option, request);
+                            }
+                        })
+        );
+    }
 
-        return mono.doOnNext(request -> {
+    private Mono<ConnectRequest> valid(Mono<ConnectRequest> mono) {
+        return mono.flatMap(req -> {
             // 校验参数
-            if (StringUtils.isEmpty(request.getDeviceId())
-                    || StringUtils.isEmpty(request.getSign())
-                    || StringUtils.isEmpty(request.getData())) {
-                throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
+            if (StringUtils.isEmpty(req.getDeviceId())
+                    || StringUtils.isEmpty(req.getSign())
+                    || StringUtils.isEmpty(req.getData())) {
+                return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "bad request"));
             }
             // 验证设备有效性(sha256(wifi名称,设备ID,randomKey,核验密钥))
-            if (!connectHandler.match(request.getLocate(), request.getDeviceId(), request.getSign())) {
-                log.info("valid failed, reject it");
-                throw new HttpClientException(HttpStatus.UNAUTHORIZED, "未通过核验");
-            }
-        }).map(request -> { //创建用户
-            // 连接参数
-            JSONObject option;
-            // 连接有效期
-            Integer maxAccess;
-            try {
-                // 解密二维码附带加密数据（连接参数）
-                option = connectHandler.getOption(request.getData());
-                maxAccess = option.getInteger("maxAccess");
-            } catch (BadEncryptException e) {
-                throw new HttpClientException(HttpStatus.BAD_REQUEST, "数据无效或过期");
-            }
-            // 弹窗确认是否同意连接
-            if (!confirm(maxAccess, request, remoteAddress.getAddress().getHostAddress())) {
-                return failure("拒绝连接");
-            } else {
-                connectHandler.reset();
-            }
-            // 生成设备ID及验证密钥
-            String uid = generateId(request.getDeviceId(), request.getLocate());
-            String validKey = IDUtil.get32UUID();
-            String realPwd = DigestUtils.sha256Hex(String.join(";", validKey, config.getPassword(), option.getString("token")));
-            try {
-                // 创建并持久化用户信息
-                AccessUser user = userService.newUser(uid, request.getDeviceId(), realPwd, maxAccess);
-                log.info("accept new connector for {}[{}]", user.getAlias(), user.getId());
-
-                // 返回成功
-                return ok(uid, validKey);
-            } catch (IOException e) {
-                log.error("create new user failed", e);
-                throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常");
-            } catch (Exception e) {
-                log.error("init user failed with option: " + option, e);
-                throw new HttpClientException(HttpStatus.BAD_REQUEST, "bad request");
-            }
+            return validService.valid(WinDropConfiguration.CONNECT_GROUP, req.getSign(), req.getLocate(), req.getDeviceId()).flatMap(success -> {
+                if (!success) {
+                    return Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，认证码过期或已被使用"));
+                }
+                return Mono.just(req);
+            });
         });
     }
 
-    private boolean confirm(int maxAccess, ConnectRequest request, String host) {
+    private Mono<ConnectResponse> createUser(JSONObject option, ConnectRequest request) {
+        // 连接有效期
+        Integer maxAccess = option.getInteger("maxAccess");
+        String token = option.getString("token");
+
+        // 生成设备ID及验证密钥
+        String uid = generateId(request.getDeviceId(), request.getLocate());
+        String validKey = IDUtil.get32UUID();
+        String realPwd = DigestUtils.sha256Hex(ConvertUtil.combines(";", validKey, token));
+        return Mono.fromSupplier(() -> {
+            try {
+                return userService.newUser(uid, request.getDeviceId(), realPwd, maxAccess);
+            } catch (IOException e) {
+                log.error("create new user failed", e);
+                return Mono.error(new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常"));
+            } catch (Exception e) {
+                log.error("init user failed with option: " + option, e);
+                return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "bad request"));
+            }
+        }).cast(AccessUser.class).map(user -> {
+            log.info("accept new connector for {}[{}]", user.getAlias(), user.getId());
+            return ok(uid, validKey);
+        });
+    }
+
+    private boolean confirm(JSONObject opt, ConnectRequest request, String host) {
+        Integer maxAccess = opt.getInteger("maxAccess");
         String accessTime;
         if (maxAccess < 0) {
             accessTime = "永久";

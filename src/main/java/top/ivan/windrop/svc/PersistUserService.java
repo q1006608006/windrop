@@ -119,5 +119,4 @@ public class PersistUserService {
         fileHandler.sync();
     }
 
-
 }
