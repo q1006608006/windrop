@@ -164,14 +164,22 @@ public class ConvertUtil {
             return "";
         }
         StringBuilder bd = new StringBuilder();
+        boolean deleteLast = false;
         for (Object pat : patterns) {
             if (pat instanceof Object[]) {
                 bd.append(combines(delimiter, (Object[]) pat));
+                deleteLast = false;
             } else if (null != pat) {
                 bd.append(pat).append(delimiter);
+                deleteLast = true;
+            } else {
+                bd.append(delimiter);
+                deleteLast = false;
             }
         }
-        bd.deleteCharAt(bd.length() - 1);
+        if (deleteLast) {
+            bd.deleteCharAt(bd.length() - 1);
+        }
         return bd.toString();
     }
 }

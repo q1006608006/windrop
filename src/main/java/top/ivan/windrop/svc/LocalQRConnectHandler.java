@@ -49,10 +49,6 @@ public class LocalQRConnectHandler extends LocalQRHandler {
         return qrCodeService.register(k -> qrBody, 1, 90);
     }
 
-    public boolean match(String locate, String deviceId, String sign) {
-        return keyService.match(CONNECT_GROUP, key -> Objects.equals(DigestUtils.sha256Hex(String.join(";", locate, deviceId, key)), sign));
-    }
-
     public JSONObject getOption(String data) throws BadEncryptException {
         String body = randomEncrypt.decrypt(data);
         return JSONObject.parseObject(body);
