@@ -54,7 +54,7 @@ public class WinDropApplication {
         public static final String ICON_MENU_CONFIG = "配置";
         public static final String ICON_SHOW_CONFIG = "打开配置文件";
         public static final String ICON_SHOW_ACCESSIBLE = "白名单";
-        public static final String ICON_REMOVE_DEVICES = "重置认证设备";
+        public static final String ICON_REMOVE_DEVICES = "清空设备";
 
         public static final String ICON_SHOW_LOG = "查看日志";
 
