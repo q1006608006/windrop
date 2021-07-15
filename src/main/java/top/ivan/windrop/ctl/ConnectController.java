@@ -16,7 +16,6 @@ import top.ivan.windrop.WinDropConfiguration;
 import top.ivan.windrop.bean.AccessUser;
 import top.ivan.windrop.bean.ConnectRequest;
 import top.ivan.windrop.bean.ConnectResponse;
-import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.ex.HttpServerException;
 import top.ivan.windrop.svc.LocalQRConnectHandler;
@@ -46,14 +45,14 @@ public class ConnectController {
     private PersistUserService userService;
 
     /**
-     * 与本控制器共享数据的handler
+     * 基于二维码的连接数据共享服务
      */
     @Autowired
     private LocalQRConnectHandler connectHandler;
 
-    @Autowired
-    private WindropConfig config;
-
+    /**
+     * 核验服务
+     */
     @Autowired
     private ValidService validService;
 
@@ -82,6 +81,12 @@ public class ConnectController {
         );
     }
 
+    /**
+     * 核验请求
+     *
+     * @param mono 连接请求
+     * @return 连接请求
+     */
     private Mono<ConnectRequest> valid(Mono<ConnectRequest> mono) {
         return mono.flatMap(req -> {
             // 校验参数
@@ -100,6 +105,13 @@ public class ConnectController {
         });
     }
 
+    /**
+     * 创建用户并返回注册ID及密码验证码
+     *
+     * @param option  配置信息
+     * @param request 连接请求
+     * @return 注册ID及密码验证码
+     */
     private Mono<ConnectResponse> createUser(JSONObject option, ConnectRequest request) {
         // 连接有效期
         Integer maxAccess = option.getInteger("maxAccess");
@@ -125,6 +137,14 @@ public class ConnectController {
         });
     }
 
+    /**
+     * 弹窗确认
+     *
+     * @param opt     配置信息
+     * @param request 连接请求
+     * @param host    请求IP地址
+     * @return 确认结果
+     */
     private boolean confirm(JSONObject opt, ConnectRequest request, String host) {
         Integer maxAccess = opt.getInteger("maxAccess");
         String accessTime;
@@ -142,6 +162,12 @@ public class ConnectController {
         return WinDropApplication.WindropHandler.confirm("新连接", "是否允许" + request.getDeviceId() + "(" + host + ")连接windrop[" + accessTime + "]?");
     }
 
+    /**
+     * 连接失败
+     *
+     * @param msg 提示消息
+     * @return 连接信息
+     */
     private ConnectResponse failure(String msg) {
         ConnectResponse rsp = new ConnectResponse();
         rsp.setSuccess(false);
@@ -149,6 +175,13 @@ public class ConnectController {
         return rsp;
     }
 
+    /**
+     * 连接成功
+     *
+     * @param id  注册ID
+     * @param key 密码验证码
+     * @return 连接信息
+     */
     private ConnectResponse ok(String id, String key) {
         ConnectResponse rsp = new ConnectResponse();
         rsp.setSuccess(true);
@@ -161,8 +194,8 @@ public class ConnectController {
      * 生成用户id（非随机）
      *
      * @param deviceId 设备名称
-     * @param locate   一般为wifi名称
-     * @return 用户ID
+     * @param locate   一般为wifi名称+下划线+网端 （如: mywifi_192.168.0）
+     * @return ID
      */
     private String generateId(String deviceId, String locate) {
         return DigestUtils.sha256Hex(SystemUtil.getSystemKey() + ";" + deviceId + ";" + locate).substring(0, 8);

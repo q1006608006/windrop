@@ -47,23 +47,43 @@ import java.util.Optional;
 public class FileSwapController {
 
     static {
+        // 创建文件储存目录
         File receiveDir = new File(WinDropConfiguration.UPLOAD_FILES_PATH);
         if (!receiveDir.exists() || !receiveDir.isDirectory()) {
             receiveDir.mkdir();
         }
     }
 
+    /**
+     * 文件上传随机验证码组
+     */
     public static final String FILE_UPLOAD_APPLY_GROUP = "FILE_UPLOAD_APPLY";
 
+    /**
+     * 资源共享服务
+     */
     @Autowired
     private ResourceSharedService resourceSharedService;
 
+    /**
+     * 用户服务
+     */
     @Autowired
     private PersistUserService userService;
 
+    /**
+     * 核验服务
+     */
     @Autowired
     private ValidService validService;
 
+    /**
+     * 下载资源
+     *
+     * @param key      资源ID
+     * @param response 请求信息
+     * @return 对应资源
+     */
     @ResponseBody
     @GetMapping(value = "download/{key}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public Mono<Resource> download(@PathVariable String key, ServerHttpResponse response) {
@@ -77,6 +97,7 @@ public class FileSwapController {
                     String filename = Optional.ofNullable(resource.getFilename()).orElse(IDUtil.getShortUuid());
                     filename = new String(filename.getBytes(StandardCharsets.UTF_8), "ISO_8859_1");
                     response.getHeaders().set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
+
                 } catch (IOException e) {
                     log.error("server io exception", e);
                     throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());

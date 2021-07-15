@@ -1,8 +1,10 @@
 server:
   port: ${windrop.port:8898}
-  servlet:
-    session:
-      timeout: 3h
+  compression:
+    #开启gzip压缩将enabled值改为on
+    enabled: off
+    mime-types: application/*,text/plain,image/*
+    min-response-size: 20MB
 
 spring:
   servlet:
@@ -10,11 +12,6 @@ spring:
       max-request-size: 29MB
   codec:
     max-in-memory-size: 50MB
-  security:
-    user:
-      name: ${windrop.username:}
-      #      password: $2a$10$ZcpJcjag3FtdJhwPmFBo4OMtiHSjblmUQ4rCKCaJzKPFAWjFJGKja
-      password: ${windrop.password:}
   thymeleaf:
     cache: false
 

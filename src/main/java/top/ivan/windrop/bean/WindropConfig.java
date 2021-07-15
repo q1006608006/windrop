@@ -24,14 +24,10 @@ public class WindropConfig {
     private static final List<String> operatorList = Arrays.asList("pull", "text", "file", "image");
 
     private int port;
-    private String username;
-    private String password;
     private long maxFileLength;
     private String encoding;
-    private boolean enableShowText;
     private List<String> notify;
     private List<String> confirm;
-    private long fileExpiredSecond;
 
     public boolean needNotify(String type, boolean isPush) {
         if (null == notify) {

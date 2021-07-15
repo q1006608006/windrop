@@ -229,7 +229,8 @@ public class WinDropApplication {
             }
             String qrKey = beanHandler.fileSharedService.sharedFile(selectorFile, 5, 300);
             try {
-                Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/code/" + qrKey));
+                URI uri = new URI(getURLPrefix() + "/windrop/code/" + qrKey);
+                Desktop.getDesktop().browse(uri);
             } catch (URISyntaxException | IOException e) {
                 alert("无法打开网页");
                 log.error("open browser failed", e);
