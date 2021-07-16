@@ -33,12 +33,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.Optional;
 
 /**
  * @author Ivan
- * @description
+ * @description 大文件上传下载控制器
  * @date 2021/3/15
  */
 @Slf4j
@@ -109,7 +108,8 @@ public class FileSwapController {
     /**
      * 获取上传请求accessKey
      *
-     * @return {@link ApplyResponse}
+     * @param reqMono 申请请求
+     * @return accessKey
      */
     @ResponseBody
     @PostMapping("upload/apply")
@@ -119,6 +119,13 @@ public class FileSwapController {
                 .map(group -> ApplyResponse.success(validService.getValidKey(group, 90)));
     }
 
+    /**
+     * 访问下载页面
+     *
+     * @param id  用户id
+     * @param key 验证钥（签名）
+     * @return 下载页面
+     */
     @GetMapping("upload/{key}")
     @VerifyIP
     public Mono<String> uploadModel(@RequestParam String id, @PathVariable String key) {
@@ -130,23 +137,12 @@ public class FileSwapController {
                 .thenReturn("upload");
     }
 
-/*
-    @RequestMapping(value = "upload/{key}", method = RequestMethod.HEAD)
-    @VerifyIP
-    public Mono<HttpHeaders> uploadTest(@RequestParam String id, @PathVariable String key) {
-        return WebHandler.ip()
-                .map(ip -> {
-                    AccessUser user = prepareUser(id);
-                    boolean result = keyService.test(prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP), k -> DigestUtils.sha256Hex(String.join(";", user.getValidKey(), ip, k)).equals(key));
-
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.add("accessible", String.valueOf(result));
-                    headers.add("source", ip);
-                    return headers;
-                });
-    }
-*/
-
+    /**
+     * 上传文件
+     *
+     * @param fpMono 文件部分
+     * @return 上传结果
+     */
     @ResponseBody
     @PostMapping("upload")
     @VerifyIP
@@ -170,6 +166,12 @@ public class FileSwapController {
         });
     }
 
+    /**
+     * 获取用户
+     *
+     * @param id 用户id
+     * @return 用户信息
+     */
     private AccessUser prepareUser(String id) {
         try {
             AccessUser user = userService.findUser(id);
@@ -186,6 +188,13 @@ public class FileSwapController {
         }
     }
 
+    /**
+     * 验证用户
+     *
+     * @param sign 签名
+     * @param user 用户
+     * @return 验证结果
+     */
     private Mono<Boolean> valid(String sign, AccessUser user) {
         String group = prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP);
         return validService.valid(group, sign, user.getValidKey())
@@ -194,10 +203,24 @@ public class FileSwapController {
                 });
     }
 
+    /**
+     * 获取验证组名
+     *
+     * @param id    用户id
+     * @param group 权限所属组
+     * @return 验证组名
+     */
     private String prepareKey(String id, String group) {
         return String.join("_", group, id);
     }
 
+    /**
+     * 手动确认是否保存文件
+     *
+     * @param f    已储存至本地的文件
+     * @param user 上传用户
+     * @param ip   上传来源
+     */
     private void confirmFile(File f, AccessUser user, String ip) {
         String md5;
         try {
@@ -206,7 +229,7 @@ public class FileSwapController {
             throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "服务器IO异常");
         }
 
-        String msg = String.format("请确认是否接收文件: %s\n" +
+        String msg = String.format("请确认是否保留文件: %s\n" +
                 "来自设备: %s\n" +
                 "大小: %s\n" +
                 "md5摘要: %s", f.getName(), user.getAlias(), ConvertUtil.toShortSize(f.length()), md5);
@@ -218,15 +241,4 @@ public class FileSwapController {
         }
     }
 
-    @RequestMapping(value = "test", method = {RequestMethod.HEAD})
-    @ResponseBody
-    public Mono<?> test(String id) {
-        System.out.println(id);
-
-        if ("1".equals(id)) {
-            return Mono.just(Collections.singletonMap("test", id));
-        } else {
-            throw new HttpClientException(HttpStatus.NOT_FOUND, "no");
-        }
-    }
 }

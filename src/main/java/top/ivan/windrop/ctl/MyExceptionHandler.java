@@ -14,6 +14,9 @@ import org.springframework.web.client.HttpStatusCodeException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 处理未捕获的异常
+ */
 @Slf4j
 @ControllerAdvice
 public class MyExceptionHandler {

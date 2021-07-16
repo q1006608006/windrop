@@ -48,6 +48,7 @@ public class SwapController {
     private static final File TEMP_DIRECTORY_FILE;
 
     static {
+        //创建临时文件夹
         File tempDir = new File(WinDropConfiguration.TEMP_FILE_PATH);
         if (!tempDir.exists() || !tempDir.isDirectory()) {
             tempDir.mkdir();
@@ -73,6 +74,9 @@ public class SwapController {
     @Autowired
     private ResourceSharedService sharedService;
 
+    /**
+     * 验证器
+     */
     @Autowired
     private ValidService validService;
 
@@ -99,7 +103,7 @@ public class SwapController {
     }
 
     /**
-     * 交换请求
+     * 申请校验码
      *
      * @param mono 推送数据{@link ApplyRequest}
      * @return 随机访问密钥 {@link ApplyResponse}
@@ -188,7 +192,7 @@ public class SwapController {
     }
 
     /**
-     * push类型核验，格式: sha256("sha256(data);随机密钥;用户密钥")
+     * push类型核验
      *
      * @param user    用户信息
      * @param request push请求
@@ -204,7 +208,7 @@ public class SwapController {
     }
 
     /**
-     * pull类型核验，格式: sha256("随机密钥;用户密钥")
+     * pull类型核验
      *
      * @param user       用户信息
      * @param request    pull请求
@@ -218,6 +222,12 @@ public class SwapController {
                 });
     }
 
+    /**
+     * 查找用户
+     *
+     * @param id 用户ID
+     * @return 用户信息
+     */
     private AccessUser prepareUser(String id) {
         try {
             AccessUser user = userService.findUser(id);
@@ -315,7 +325,7 @@ public class SwapController {
      *
      * @param clipboardData push请求信息
      * @param data          图片数据
-     * @return 临时文件信息（使用文件方式储存，便于在不同应用中显示图片）
+     * @return 临时文件图片
      * @throws IOException io异常
      */
     private ImageFileClipBean setImage2Clipboard(WindropRequest clipboardData, byte[] data) throws IOException {
@@ -396,6 +406,7 @@ public class SwapController {
         // 配合用户验证密钥签名
         String sign = DigestUtils.sha256Hex(dataSha + ";" + user.getValidKey());
 
+        // 封装返回body
         WindropResponse response = new WindropResponse();
         response.setData(data);
         response.setType(type);
@@ -434,7 +445,7 @@ public class SwapController {
             }, 1, 180);
         }
 
-        // 封装请求
+        // 封装返回body
         WindropResponse resp = new WindropResponse();
         resp.setServerUpdateTime(clipBean.getUpdateTime());
         resp.setResourceId(resourceId);
@@ -446,7 +457,16 @@ public class SwapController {
         return resp;
     }
 
+    /**
+     * 调用系统提醒
+     *
+     * @param type     操作类型
+     * @param user     操作用户
+     * @param clipBean 操作对象
+     * @param isPush   是否push请求
+     */
     private void systemNotify(String type, AccessUser user, ClipBean clipBean, boolean isPush) {
+        // 判断是否需要调用系统提醒
         if (config.needNotify(type, isPush)) {
             StringBuilder mbd = new StringBuilder();
             if (isPush) {
@@ -461,13 +481,25 @@ public class SwapController {
             } else {
                 mbd.delete(mbd.length() - 2, mbd.length() - 1);
             }
+            // 调用系统提醒
             WinDropApplication.WindropHandler.getSystemTray().showNotification(mbd.toString());
         }
     }
 
+    /**
+     * 弹窗请求确认
+     *
+     * @param user     请求用户
+     * @param request  请求body
+     * @param ip       请求来源
+     * @param itemType 操作对象类型
+     * @param isPush   是否push请求
+     */
     private void confirm(AccessUser user, ApplyRequest request, String ip, String itemType, boolean isPush) {
+        // 判断是否需要弹窗确认
         if (config.needConfirm(itemType, isPush)) {
             String msg;
+            //根据push或pull请求包装确认消息
             if (!isPush) {
                 ClipBean bean = ClipUtil.getClipBean();
                 String itemName;
@@ -491,30 +523,46 @@ public class SwapController {
                         break;
                 }
             }
+            // 弹窗确认
             if (!WinDropApplication.WindropHandler.confirm("来自" + ip, msg)) {
                 log.info("canceled {} request from {}({})", isPush ? "push" : "pull", user.getAlias(), ip);
+                // 点击取消则拒绝此处请求
                 throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
             }
         }
     }
 
     /**
-     * 获取交换随机密钥
+     * 获取验证组
+     *
+     * @param itemType 操作对象类型
+     * @param user     请求用户
+     * @param isPush   是否push请求
+     * @return 验证组名
      */
     private String getSwapGroupKey(String itemType, AccessUser user, boolean isPush) {
         String type = isPush ? "push" : "pull";
         return ConvertUtil.combines("_", WinDropConfiguration.SWAP_GROUP, user.getId(), type, itemType);
     }
 
+    /**
+     * 格式化文件名（防止恶意字符）
+     *
+     * @param src 源文件名
+     * @return 格式化后的文件名
+     */
     private static String formatName(String src) {
         String name = StringUtils.isEmpty(src) ? "copyfile" + System.currentTimeMillis() / 1000 : src;
         name = name.replaceAll("[\\\\/:*?\"<>|]", "");
-        if (name.length() > 61) {
-            return name.substring(0, 61);
-        }
         return name;
     }
 
+    /**
+     * 获取图片真实类型
+     *
+     * @param is 图片二进制数据
+     * @return 图片类型
+     */
     public static String getImageType(byte[] is) {
         String type = "png";
         if (is != null) {

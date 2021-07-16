@@ -21,7 +21,7 @@ import java.io.IOException;
 
 /**
  * @author Ivan
- * @description
+ * @description 二维码生成控制器
  * @date 2021/3/26
  */
 @Slf4j
@@ -39,12 +39,22 @@ public class QrCodeController {
     @Autowired
     private QrCodeControllerService service;
 
+    /**
+     * 根据二维码ID返回二维码
+     *
+     * @param id       二维码ID
+     * @param response response操作类
+     * @return 二维码图流
+     */
     @RequestMapping("{id}")
     public Mono<byte[]> getQrCode(@PathVariable String id, ServerHttpResponse response) {
         return Mono.fromSupplier(() -> {
             try {
+                //根据ID获取数据
                 String data = service.getData(id);
+                //设置返回媒体类型
                 response.getHeaders().setContentType(MediaType.IMAGE_PNG);
+                //生成二维码并返回
                 return ConvertUtil.getQrCodeImageBytes(data, WIDTH, HEIGHT, FORMAT);
             } catch (WriterException | IOException e) {
                 throw new HttpClientException(HttpStatus.INTERNAL_SERVER_ERROR, "二维码生成失败");
