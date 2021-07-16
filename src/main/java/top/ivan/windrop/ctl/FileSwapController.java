@@ -106,17 +106,6 @@ public class FileSwapController {
         });
     }
 
-    @RequestMapping(value = "download/{key}", method = {RequestMethod.HEAD})
-    @ResponseBody
-    public Mono<HttpHeaders> downloadTest(@PathVariable String key) {
-        return WebHandler.ip().map(ip -> {
-            HttpHeaders headers = new HttpHeaders();
-            headers.add("accessible", String.valueOf(resourceSharedService.containsResource(key)));
-            headers.add("source", ip);
-            return headers;
-        });
-    }
-
     /**
      * 获取上传请求accessKey
      *
