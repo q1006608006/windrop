@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class WatchedFile {
     private final File watchFile;
@@ -18,11 +19,12 @@ public class WatchedFile {
         File file = new File(dataFile);
         if (!file.exists()) {
             File dir = file.getParentFile();
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
+
             try {
-                file.createNewFile();
+                if (!dir.exists()) {
+                    Files.createDirectory(Paths.get(dir.toURI()));
+                }
+                Files.createFile(Paths.get(file.toURI()));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

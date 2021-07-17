@@ -13,14 +13,14 @@ import java.util.function.*;
  */
 public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
 
-    private final int MAX_SIZE;
-    private final LinkedBlockingQueue<K> keyQueue;
-    private final BiPredicate<K, V> removeEldest;
-    private final BiConsumer<K, V> cleanAction;
+    private final int maxSize;
+    private final transient LinkedBlockingQueue<K> keyQueue;
+    private final transient BiPredicate<K, V> removeEldest;
+    private final transient BiConsumer<K, V> cleanAction;
 
     public QueuedConcurrentMap(int max, BiPredicate<K, V> removeEldest, BiConsumer<K, V> cleanAction) {
-        this.MAX_SIZE = max;
-        this.keyQueue = new LinkedBlockingQueue<>(MAX_SIZE * 2);
+        this.maxSize = max;
+        this.keyQueue = new LinkedBlockingQueue<>(maxSize * 2);
         this.removeEldest = removeEldest == null ? (k, v) -> true : removeEldest;
         this.cleanAction = cleanAction == null ? (k, v) -> {
         } : cleanAction;
@@ -59,10 +59,10 @@ public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
             keyQueue.add(key);
         }
         V r = supplier.get();
-        if (size() > MAX_SIZE) {
+        if (size() > maxSize) {
             checkForFull();
             // force remove
-            while (size() > MAX_SIZE && keyQueue.size() > 0) {
+            while (size() > maxSize && !keyQueue.isEmpty()) {
                 K removedKey = keyQueue.poll();
                 V removed = remove(removedKey);
                 cleanAction.accept(removedKey, removed);
@@ -72,14 +72,14 @@ public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
     }
 
     private void checkForFull() {
-        if (size() > MAX_SIZE) {
+        if (size() > maxSize) {
             List<K> list = new ArrayList<>(keyQueue);
             for (K k : list) {
                 V v = get(k);
                 if (removeEldest.test(k, v) && remove(k, v)) {
                     keyQueue.remove(k);
                     cleanAction.accept(k, v);
-                    if (size() <= MAX_SIZE) {
+                    if (size() <= maxSize) {
                         return;
                     }
                 }

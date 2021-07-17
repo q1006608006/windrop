@@ -29,15 +29,13 @@ public class FilesWatcher {
         return false;
     }
 
-    public void ifUpdatedThen(File file, Consumer<File> accept) {
-        if (fileMap.containsKey(file)) {
-            if (fileMap.get(file) != file.lastModified()) {
-                synchronized (file) {
-                    if (fileMap.get(file) != file.lastModified()) {
-                        fileMap.put(file, file.lastModified());
-                        if (null != accept) {
-                            accept.accept(file);
-                        }
+    public void thenIfUpdated(File file, Consumer<File> accept) {
+        if (fileMap.containsKey(file) && fileMap.get(file) != file.lastModified()) {
+            synchronized (fileMap) {
+                if (fileMap.get(file) != file.lastModified()) {
+                    fileMap.put(file, file.lastModified());
+                    if (null != accept) {
+                        accept.accept(file);
                     }
                 }
             }
@@ -45,9 +43,7 @@ public class FilesWatcher {
     }
 
     public void syncFile(File file) {
-        if (fileMap.containsKey(file)) {
-            fileMap.put(file, file.lastModified());
-        }
+        fileMap.computeIfAbsent(file, File::lastModified);
     }
 
 }

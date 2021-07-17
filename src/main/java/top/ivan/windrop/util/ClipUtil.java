@@ -20,7 +20,10 @@ import java.util.List;
  * @date 2020/12/14
  */
 public class ClipUtil {
-    private final static String DEFAULT_IMAGE_FORMAT = "png";
+    private ClipUtil() {
+    }
+
+    private static final String DEFAULT_IMAGE_FORMAT = "png";
 
     private static Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
 
@@ -133,8 +136,9 @@ public class ClipUtil {
                 return "图片";
             case "text":
                 return "文本";
+            default:
+                return "未知类型";
         }
-        return "未知类型";
     }
 
     public static String getClipBeanType(ClipBean clipBean) {

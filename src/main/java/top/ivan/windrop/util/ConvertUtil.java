@@ -21,10 +21,12 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
+import java.security.SecureRandom;
+import java.util.EnumMap;
 
 /**
  * @author Ivan
@@ -32,6 +34,18 @@ import java.util.HashMap;
  * @date 2020/12/17
  */
 public class ConvertUtil {
+    private static final IvParameterSpec SEC_IV;
+
+    static {
+        SecureRandom sr = new SecureRandom(SystemUtil.getSystemKey().getBytes(StandardCharsets.UTF_8));
+        byte[] iv = new byte[16];
+        sr.nextBytes(iv);
+        SEC_IV = new IvParameterSpec(iv);
+    }
+
+
+    private ConvertUtil() {
+    }
 
     public static String encodeBase64(byte[] data) {
         return Base64.encodeBase64String(data);
@@ -61,15 +75,15 @@ public class ConvertUtil {
                 /*
            定义二维码的参数
         */
-        HashMap<EncodeHintType, Object> hashMap = new HashMap<>();
+        EnumMap<EncodeHintType, Object> option = new EnumMap<>(EncodeHintType.class);
         // 设置二维码字符编码
-        hashMap.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+        option.put(EncodeHintType.CHARACTER_SET, "UTF-8");
         // 设置二维码纠错等级
-        hashMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
+        option.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
         // 设置二维码边距
-        hashMap.put(EncodeHintType.MARGIN, 2);
+        option.put(EncodeHintType.MARGIN, 2);
 
-        BitMatrix bitMatrix = new MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, width, height, hashMap);
+        BitMatrix bitMatrix = new MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, width, height, option);
         BufferedImage image = MatrixToImageWriter.toBufferedImage(bitMatrix);
 
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
@@ -78,17 +92,17 @@ public class ConvertUtil {
         return bout.toByteArray();
     }
 
-    public static Image getQrCodeImage(String content, int width, int height, String format) throws WriterException, IOException {
+    public static Image getQrCodeImage(String content, int width, int height) throws WriterException {
         //定义二维码的参数
-        HashMap<EncodeHintType, Object> hashMap = new HashMap<>();
+        EnumMap<EncodeHintType, Object> option = new EnumMap<>(EncodeHintType.class);
         // 设置二维码字符编码
-        hashMap.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+        option.put(EncodeHintType.CHARACTER_SET, "UTF-8");
         // 设置二维码纠错等级
-        hashMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
+        option.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
         // 设置二维码边距
-        hashMap.put(EncodeHintType.MARGIN, 2);
+        option.put(EncodeHintType.MARGIN, 2);
 
-        BitMatrix bitMatrix = new MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, width, height, hashMap);
+        BitMatrix bitMatrix = new MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, width, height, option);
 
         return MatrixToImageWriter.toBufferedImage(bitMatrix);
     }
@@ -104,12 +118,12 @@ public class ConvertUtil {
     public static byte[] encrypt(byte[] content, String key) throws BadEncryptException {
         try {
             if (key.length() < 16) {
-                key = (key + "0000000000000000").substring(0, 16);
+                key = (key + "0000000000000000");
             }
+            key = key.substring(0, 16);
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             SecretKey secretKey = new SecretKeySpec(key.getBytes(), "AES");
-            IvParameterSpec iv = new IvParameterSpec(key.substring(0, 16).getBytes());
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, iv);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, SEC_IV);
             return cipher.doFinal(content);
         } catch (NoSuchAlgorithmException e) {
             throw new BadEncryptException(e);
@@ -125,12 +139,12 @@ public class ConvertUtil {
     public static byte[] decrypt(byte[] msg, String key) throws BadEncryptException {
         try {
             if (key.length() < 16) {
-                key = (key + "0000000000000000").substring(0, 16);
+                key = (key + "0000000000000000");
             }
+            key = key.substring(0, 16);
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             SecretKey secretKey = new SecretKeySpec(key.getBytes(), "AES");
-            IvParameterSpec iv = new IvParameterSpec(key.substring(0, 16).getBytes());
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, iv);
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, SEC_IV);
             return cipher.doFinal(msg);
         } catch (NoSuchAlgorithmException e) {
             throw new BadEncryptException(e);

@@ -31,6 +31,7 @@ import top.ivan.windrop.verify.WebHandler;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
@@ -92,15 +93,9 @@ public class FileSwapController {
         }
         return Mono.just(res).doOnNext(resource -> {
             if (resource.isFile()) {
-                try {
-                    String filename = Optional.ofNullable(resource.getFilename()).orElse(IDUtil.getShortUuid());
-                    filename = new String(filename.getBytes(StandardCharsets.UTF_8), "ISO_8859_1");
-                    response.getHeaders().set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
-
-                } catch (IOException e) {
-                    log.error("server io exception", e);
-                    throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-                }
+                String filename = Optional.ofNullable(resource.getFilename()).orElse(IDUtil.getShortUuid());
+                filename = new String(filename.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1);
+                response.getHeaders().set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
             }
         });
     }
@@ -198,9 +193,9 @@ public class FileSwapController {
     private Mono<Boolean> valid(String sign, AccessUser user) {
         String group = prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP);
         return validService.valid(group, sign, user.getValidKey())
-                .doOnNext(success -> {
-                    if (!success) throw new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆");
-                });
+                .flatMap(success -> Boolean.TRUE.equals(success) ?
+                        Mono.just(true) : Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆"))
+                );
     }
 
     /**
@@ -234,8 +229,9 @@ public class FileSwapController {
                 "大小: %s\n" +
                 "md5摘要: %s", f.getName(), user.getAlias(), ConvertUtil.toShortSize(f.length()), md5);
         if (!WinDropApplication.WindropHandler.confirm("来自" + ip, msg)) {
-            boolean success = f.delete();
-            if (!success) {
+            try {
+                Files.delete(Paths.get(f.toURI()));
+            } catch (IOException e) {
                 WinDropApplication.WindropHandler.alert("删除失败，请手动删除，文件路径: " + f.getAbsolutePath());
             }
         }

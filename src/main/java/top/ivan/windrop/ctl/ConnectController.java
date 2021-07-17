@@ -96,12 +96,10 @@ public class ConnectController {
                 return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "bad request"));
             }
             // 验证设备有效性(sha256(wifi名称,设备ID,randomKey,核验密钥))
-            return validService.valid(WinDropConfiguration.CONNECT_GROUP, req.getSign(), req.getLocate(), req.getDeviceId()).flatMap(success -> {
-                if (!success) {
-                    return Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，认证码过期或已被使用"));
-                }
-                return Mono.just(req);
-            });
+            return validService.valid(WinDropConfiguration.CONNECT_GROUP, req.getSign(), req.getLocate(), req.getDeviceId())
+                    .flatMap(success -> Boolean.TRUE.equals(success)
+                            ? Mono.just(req) : Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，认证码过期或已被使用"))
+                    );
         });
     }
 

@@ -97,7 +97,7 @@ public class SwapController {
             // 保留与当前剪贴板一致的文件
             if (!ClipUtil.isOrigin(file)) {
                 log.info("clear expired file: '{}'", file);
-                file.delete();
+                Files.delete(Paths.get(file.toURI()));
             }
         }
     }
@@ -179,7 +179,6 @@ public class SwapController {
             // 获取剪贴板信息
             ClipBean clipBean = ClipUtil.getClipBean();
 
-
             // 1.验证签名
             return validPullRequest(user, request, ClipUtil.getClipBeanType(clipBean))
                     // 2.封装剪切板内容
@@ -202,9 +201,7 @@ public class SwapController {
         String group = getSwapGroupKey(request.getType(), user, true);
         String dataSha = DigestUtils.sha256Hex(data);
         return validService.valid(group, request.getSign(), user.getValidKey(), dataSha)
-                .doOnNext(success -> {
-                    if (!success) throw new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆");
-                });
+                .flatMap(result -> Boolean.TRUE.equals(result) ? Mono.just(true) : Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆")));
     }
 
     /**
@@ -217,9 +214,7 @@ public class SwapController {
     private Mono<Boolean> validPullRequest(AccessUser user, WindropRequest request, String targetType) {
         String group = getSwapGroupKey(targetType, user, false);
         return validService.valid(group, request.getSign(), user.getValidKey())
-                .doOnNext(success -> {
-                    if (!success) throw new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆");
-                });
+                .flatMap(result -> Boolean.TRUE.equals(result) ? Mono.just(true) : Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆")));
     }
 
     /**
@@ -496,39 +491,40 @@ public class SwapController {
      * @param isPush   是否push请求
      */
     private void confirm(AccessUser user, ApplyRequest request, String ip, String itemType, boolean isPush) {
-        // 判断是否需要弹窗确认
-        if (config.needConfirm(itemType, isPush)) {
-            String msg;
-            //根据push或pull请求包装确认消息
-            if (!isPush) {
-                ClipBean bean = ClipUtil.getClipBean();
-                String itemName;
-                if (bean instanceof FileBean) {
-                    itemName = ((FileBean) bean).getFileName();
-                } else {
-                    itemName = ClipUtil.getClipBeanTypeName(bean);
-                }
-                msg = "是否推送'" + itemName + "'到[" + user.getAlias() + "]?";
+        // 无需弹窗确认则直接返回
+        if(!config.needConfirm(itemType, isPush)) {
+            return;
+        }
+        String msg;
+        if (!isPush) {
+            ClipBean bean = ClipUtil.getClipBean();
+            String itemName;
+            if (bean instanceof FileBean) {
+                itemName = ((FileBean) bean).getFileName();
             } else {
-                switch (itemType) {
-                    case "file":
-                    case "image":
-                        msg = "是否接收来自[" + user.getAlias() + "]的文件/图片: " + request.getFilename() + "（" + request.getSize() + ")?";
-                        break;
-                    case "text":
-                        msg = "是否接收来自[" + user.getAlias() + "]的文本?";
-                        break;
-                    default:
-                        msg = "未定义请求: " + JSON.toJSONString(request);
-                        break;
-                }
+                itemName = ClipUtil.getClipBeanTypeName(bean);
             }
-            // 弹窗确认
-            if (!WinDropApplication.WindropHandler.confirm("来自" + ip, msg)) {
-                log.info("canceled {} request from {}({})", isPush ? "push" : "pull", user.getAlias(), ip);
-                // 点击取消则拒绝此处请求
-                throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
+            msg = "是否推送'" + itemName + "'到[" + user.getAlias() + "]?";
+        } else {
+            switch (itemType) {
+                case "file":
+                case "image":
+                    msg = "是否接收来自[" + user.getAlias() + "]的文件/图片: " + request.getFilename() + "（" + request.getSize() + ")?";
+                    break;
+                case "text":
+                    msg = "是否接收来自[" + user.getAlias() + "]的文本?";
+                    break;
+                default:
+                    msg = "未定义请求: " + JSON.toJSONString(request);
+                    break;
             }
+        }
+
+        // 弹窗确认
+        if (!WinDropApplication.WindropHandler.confirm("来自" + ip, msg)) {
+            log.info("canceled {} request from {}({})", isPush ? "push" : "pull", user.getAlias(), ip);
+            // 点击取消则拒绝此处请求
+            throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
         }
     }
 

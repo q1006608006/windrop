@@ -16,21 +16,24 @@ import java.util.*;
  */
 @Slf4j
 public class SystemUtil {
-    private static String SYSTEM_KEY;
+    private SystemUtil() {
+    }
+
+    private static String systemKey;
 
     public static String getPCName() {
-        String PC_NAME;
+        String paName;
         try {
-            PC_NAME = InetAddress.getLocalHost().getHostName();
+            paName = InetAddress.getLocalHost().getHostName();
         } catch (UnknownHostException e) {
             e.printStackTrace();
-            PC_NAME = UUID.randomUUID().toString().replace("-", "");
+            paName = UUID.randomUUID().toString().replace("-", "");
         }
-        return PC_NAME;
+        return paName;
     }
 
     public static String getPCMac() {
-        String PC_MAC;
+        String paMac;
         try {
             NetworkInterface nif = NetworkInterface.getByInetAddress(InetAddress.getLocalHost());
             byte[] bytes = nif.getHardwareAddress();
@@ -44,12 +47,12 @@ public class SystemUtil {
                 String str = Integer.toHexString(intMac);
                 buffer.append(str);
             }
-            PC_MAC = buffer.toString().toUpperCase();
+            paMac = buffer.toString().toUpperCase();
         } catch (Exception e) {
             e.printStackTrace();
-            PC_MAC = UUID.randomUUID().toString().replace("-", "");
+            paMac = UUID.randomUUID().toString().replace("-", "");
         }
-        return PC_MAC;
+        return paMac;
     }
 
     public static List<String> getLocalIPList() {
@@ -81,23 +84,21 @@ public class SystemUtil {
         StringBuilder result = new StringBuilder();
         try {
             File file = File.createTempFile("realhowto", ".vbs");
-            System.out.println(file.getAbsolutePath());
             file.deleteOnExit();
-            FileWriter fw = new java.io.FileWriter(file);
-
-            String vbs = "Set objFSO = CreateObject(\"Scripting.FileSystemObject\")\n"
-                    + "Set colDrives = objFSO.Drives\n"
-                    + "Set objDrive = colDrives.item(\"" + drive + "\")\n"
-                    + "Wscript.Echo objDrive.SerialNumber";  // see note
-            fw.write(vbs);
-            fw.close();
-            Process p = Runtime.getRuntime().exec("cscript //NoLogo " + file.getPath());
-            BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            String line;
-            while ((line = input.readLine()) != null) {
-                result.append(line);
+            try (FileWriter fw = new FileWriter(file)) {
+                String vbs = "Set objFSO = CreateObject(\"Scripting.FileSystemObject\")\n"
+                        + "Set colDrives = objFSO.Drives\n"
+                        + "Set objDrive = colDrives.item(\"" + drive + "\")\n"
+                        + "Wscript.Echo objDrive.SerialNumber";  // see note
+                fw.write(vbs);
             }
-            input.close();
+            Process p = Runtime.getRuntime().exec("cscript //NoLogo " + file.getPath());
+            try (BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line;
+                while ((line = input.readLine()) != null) {
+                    result.append(line);
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -109,17 +110,16 @@ public class SystemUtil {
         try {
             File file = File.createTempFile("realhowto", ".vbs");
             file.deleteOnExit();
-            FileWriter fw = new java.io.FileWriter(file);
+            try (FileWriter fw = new java.io.FileWriter(file)) {
+                String vbs = "Set objWMIService = GetObject(\"winmgmts:\\\\.\\root\\cimv2\")\n"
+                        + "Set colItems = objWMIService.ExecQuery _ \n"
+                        + "   (\"Select * from Win32_BaseBoard\") \n"
+                        + "For Each objItem in colItems \n"
+                        + "   Wscript.Echo objItem.SerialNumber \n"
+                        + "    exit for  ' do the first cpu only! \n" + "Next \n";
 
-            String vbs = "Set objWMIService = GetObject(\"winmgmts:\\\\.\\root\\cimv2\")\n"
-                    + "Set colItems = objWMIService.ExecQuery _ \n"
-                    + "   (\"Select * from Win32_BaseBoard\") \n"
-                    + "For Each objItem in colItems \n"
-                    + "   Wscript.Echo objItem.SerialNumber \n"
-                    + "    exit for  ' do the first cpu only! \n" + "Next \n";
-
-            fw.write(vbs);
-            fw.close();
+                fw.write(vbs);
+            }
             Process p = Runtime.getRuntime().exec(
                     "cscript //NoLogo " + file.getPath());
             BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -148,11 +148,11 @@ public class SystemUtil {
     }
 
     public static String getSystemKey() {
-        if (StringUtils.isEmpty(SYSTEM_KEY)) {
+        if (StringUtils.isEmpty(systemKey)) {
             String keyStr = String.join(";", SystemUtil.getPCName(), SystemUtil.getMotherboardSN(), SystemUtil.getCpuSN());
-            SYSTEM_KEY = DigestUtils.md5Hex(keyStr);
+            systemKey = DigestUtils.md5Hex(keyStr);
         }
-        return SYSTEM_KEY;
+        return systemKey;
     }
 
     public static byte[] encrypt(byte[] data) {

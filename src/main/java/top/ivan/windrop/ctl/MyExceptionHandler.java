@@ -11,6 +11,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,10 +21,11 @@ import java.util.Map;
 @Slf4j
 @ControllerAdvice
 public class MyExceptionHandler {
+    private static final MediaType MEDIA_TYPE = new MediaType("application", "json", StandardCharsets.UTF_8);
 
     @ResponseBody
     @ExceptionHandler(value = Exception.class)
-    public ResponseEntity<Map<String, Object>> exceptionHandler(Exception e) throws Exception {
+    public ResponseEntity<Map<String, Object>> exceptionHandler(Exception e) {
         Map<String, Object> data = new HashMap<>();
         data.put("success", false);
         data.put("message", e.getMessage() == null ? e.getClass().getName() : e.getMessage());
@@ -43,6 +45,6 @@ public class MyExceptionHandler {
             log.error("未知异常", e);
         }
 
-        return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON_UTF8).body(data);
+        return ResponseEntity.status(status).contentType(MEDIA_TYPE).body(data);
     }
 }
