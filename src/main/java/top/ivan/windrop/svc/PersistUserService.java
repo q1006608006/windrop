@@ -78,8 +78,10 @@ public class PersistUserService {
     }
 
     public void deleteAll() throws IOException {
-        userMap.clear();
-        saveUserMap();
+        if(null != userMap) {
+            userMap.clear();
+            saveUserMap();
+        }
     }
 
     private Map<String, AccessUser> takeUserMap() throws IOException {
