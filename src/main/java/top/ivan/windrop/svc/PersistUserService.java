@@ -1,5 +1,6 @@
 package top.ivan.windrop.svc;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import top.ivan.windrop.bean.AccessUser;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
 
 /**
  * @author Ivan
- * @description
+ * @description 用户信息service
  * @date 2021/3/10
  */
 @Slf4j
@@ -78,7 +79,7 @@ public class PersistUserService {
     }
 
     public void deleteAll() throws IOException {
-        if(null != userMap) {
+        if (null != userMap) {
             userMap.clear();
             saveUserMap();
         }
@@ -102,7 +103,7 @@ public class PersistUserService {
                         return userMap;
                     }
                     BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(data)));
-                    userMap = reader.lines().map(str -> JSONObject.parseObject(str, AccessUser.class)).collect(Collectors.toMap(AccessUser::getId, u -> u));
+                    userMap = reader.lines().map(str -> JSON.parseObject(str, AccessUser.class)).collect(Collectors.toMap(AccessUser::getId, u -> u));
                     fileHandler.sync();
                 }
             }
