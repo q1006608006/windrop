@@ -1,6 +1,5 @@
 package top.ivan.windrop;
 
-import com.sun.java.swing.plaf.windows.WindowsLookAndFeel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
@@ -27,6 +26,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -35,13 +35,33 @@ import java.util.stream.Collectors;
 @Slf4j
 @SpringBootApplication
 public class WinDropApplication {
+    private static WindropHandler handlerInstant;
 
     public static void main(String[] args) {
         Hooks.onOperatorDebug();
         SpringApplicationBuilder builder = new SpringApplicationBuilder(WinDropApplication.class);
         builder.headless(false);
         WindropHandler handler = new WindropHandler(args, builder.build(args));
-        handler.start();
+        handlerInstant = handler;
+        handler.startApp();
+    }
+
+    public static void alert(String msg) {
+        JOptionPane.showConfirmDialog(null, msg, "警告", JOptionPane.DEFAULT_OPTION);
+    }
+
+    public static boolean confirm(String title, String msg) {
+        if (StringUtils.isEmpty(title)) {
+            title = "请选择";
+        }
+        handlerInstant.unVisibleFrame.setVisible(true);
+        int showConfirmDialog = JOptionPane.showConfirmDialog(handlerInstant.unVisibleFrame, msg, title, JOptionPane.YES_NO_OPTION);
+        handlerInstant.unVisibleFrame.setVisible(false);
+        return showConfirmDialog == 0;
+    }
+
+    public static void showNotification(String msg) {
+        handlerInstant.systemTray.showNotification(msg);
     }
 
     public static class WindropHandler {
@@ -68,9 +88,10 @@ public class WinDropApplication {
         private final SpringApplication application;
         private ConfigurableApplicationContext context;
 
-        private static Image iconImage;
-        private static WindropSystemTray systemTray;
-        private static Frame unVisibleFrame;
+        private Image iconImage;
+        private WindropSystemTray systemTray;
+        private Frame unVisibleFrame;
+        private File homeFile = FileSystemView.getFileSystemView().getHomeDirectory();
 
         /*
          * spring components
@@ -90,7 +111,7 @@ public class WinDropApplication {
             private LocalQRFileSharedHandler fileSharedService;
         }
 
-        public WindropHandler(String[] args, SpringApplication application) {
+        private WindropHandler(String[] args, SpringApplication application) {
             this.args = args;
             this.application = application;
             try {
@@ -102,43 +123,41 @@ public class WinDropApplication {
             createTray();
         }
 
-        public ConfigurableApplicationContext start() {
+        void autoWired() {
+            this.beanHandler = this.context.getBean(AppBeanHandler.class);
+        }
+
+        void startApp() {
             log.info("start windrop service...");
             disableIcon(ICON_START);
             this.context = application.run(args);
             enableIcon(ICON_STOP);
             autoWired();
             log.info("windrop started.");
-            return context;
         }
 
-        private void autoWired() {
-            this.beanHandler = this.context.getBean(AppBeanHandler.class);
-        }
-
-        public void stop() {
+        void stopApp() {
             disableIcon(ICON_STOP);
             if (null != this.context) {
                 this.context.close();
             }
             enableIcon(ICON_START);
             log.info("close windrop service...");
-
         }
 
-        public void restart() {
+        void restartApp() {
             log.info("restart windrop service...");
             disableIcon(ICON_START);
             disableIcon(ICON_STOP);
-            stop();
-            start();
+            stopApp();
+            startApp();
             enableIcon(ICON_STOP);
             log.info("restart finished");
         }
 
-        private void exit() {
+        void exit() {
             log.info("shutdown windrop now...");
-            stop();
+            stopApp();
             System.exit(0);
         }
 
@@ -210,12 +229,10 @@ public class WinDropApplication {
             }
         }
 
-        private static File HOME_FILE = FileSystemView.getFileSystemView().getHomeDirectory();
-
         private void prepareDownload() {
             JFileChooser fileChooser = new JFileChooser();
 
-            fileChooser.setCurrentDirectory(HOME_FILE);
+            fileChooser.setCurrentDirectory(homeFile);
             fileChooser.setDialogTitle("请选择要上传的文件...");
             fileChooser.setApproveButtonText("确定");
             fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
@@ -223,7 +240,7 @@ public class WinDropApplication {
             File selectorFile;
             if (fileChooser.showOpenDialog(unVisibleFrame) == 0) {
                 selectorFile = fileChooser.getSelectedFile();
-                HOME_FILE = selectorFile.getParentFile();
+                homeFile = selectorFile.getParentFile();
             } else {
                 return;
             }
@@ -251,25 +268,35 @@ public class WinDropApplication {
                 beanHandler.userService.deleteAll();
                 alert("设备重置完成");
             } catch (IOException e) {
-                alert("重置认证设备异常");
+                alert("无法重置设备");
                 log.error("reset devices failed", e);
             }
         }
 
         private void disableIcon(String title) {
-            getSystemTray().getMenus(title).get(0).setEnabled(false);
+            if (systemTray != null) {
+                List<MenuItem> items = systemTray.getMenus(title);
+                for (MenuItem item : items) {
+                    item.setEnabled(false);
+                }
+            }
         }
 
         private void enableIcon(String title) {
-            getSystemTray().getMenus(title).get(0).setEnabled(true);
+            if (systemTray != null) {
+                List<MenuItem> items = systemTray.getMenus(title);
+                for (MenuItem item : items) {
+                    item.setEnabled(true);
+                }
+            }
         }
 
         private void createTray() {
             WindropSystemTray.Builder builder = new WindropSystemTray.Builder();
             builder.showText("WinDrop").icon(iconImage)
-                    .addLabel(ICON_START, (m, t) -> start())
-                    .addLabel(ICON_STOP, (m, t) -> stop())
-                    .addLabel(ICON_RESTART, (m, t) -> restart())
+                    .addLabel(ICON_START, (m, t) -> startApp())
+                    .addLabel(ICON_STOP, (m, t) -> stopApp())
+                    .addLabel(ICON_RESTART, (m, t) -> restartApp())
                     .addSeparator()
                     .addSecondLabel(ICON_SHOW_CODE, "10分钟", (m, t) -> showConnectCode(10 * 60))
                     .addSecondLabel(ICON_SHOW_CODE, "1小时", (m, t) -> showConnectCode(60 * 60))
@@ -290,13 +317,13 @@ public class WinDropApplication {
                     .addSeparator()
                     .addLabel(ICON_SHUTDOWN, (m, t) -> exit());
 
-            WindropHandler.systemTray = builder.build();
+            systemTray = builder.build();
         }
 
         private void createFrame() {
             try {
-                UIManager.setLookAndFeel(new WindowsLookAndFeel());
-            } catch (Exception e) {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Throwable e) {
                 log.warn("set UI-style failed", e);
             }
             unVisibleFrame = new Frame();
@@ -307,27 +334,6 @@ public class WinDropApplication {
             Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
             int screenWidth = (int) screenSize.getWidth();
             unVisibleFrame.setLocation(screenWidth - 250, 50);
-        }
-
-        public static WindropSystemTray getSystemTray() {
-            if (null == systemTray) {
-                throw new IllegalStateException("尚未初始化完成");
-            }
-            return systemTray;
-        }
-
-        public static void alert(String msg) {
-            JOptionPane.showConfirmDialog(null, msg, "警告", JOptionPane.DEFAULT_OPTION);
-        }
-
-        public static boolean confirm(String title, String msg) {
-            if (StringUtils.isEmpty(title)) {
-                title = "请选择";
-            }
-            unVisibleFrame.setVisible(true);
-            int showConfirmDialog = JOptionPane.showConfirmDialog(unVisibleFrame, msg, title, JOptionPane.YES_NO_OPTION);
-            unVisibleFrame.setVisible(false);
-            return showConfirmDialog == 0;
         }
 
     }

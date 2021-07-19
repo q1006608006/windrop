@@ -477,7 +477,7 @@ public class SwapController {
                 mbd.delete(mbd.length() - 2, mbd.length() - 1);
             }
             // 调用系统提醒
-            WinDropApplication.WindropHandler.getSystemTray().showNotification(mbd.toString());
+            WinDropApplication.showNotification(mbd.toString());
         }
     }
 
@@ -492,7 +492,7 @@ public class SwapController {
      */
     private void confirm(AccessUser user, ApplyRequest request, String ip, String itemType, boolean isPush) {
         // 无需弹窗确认则直接返回
-        if(!config.needConfirm(itemType, isPush)) {
+        if (!config.needConfirm(itemType, isPush)) {
             return;
         }
         String msg;
@@ -521,7 +521,7 @@ public class SwapController {
         }
 
         // 弹窗确认
-        if (!WinDropApplication.WindropHandler.confirm("来自" + ip, msg)) {
+        if (!WinDropApplication.confirm("来自" + ip, msg)) {
             log.info("canceled {} request from {}({})", isPush ? "push" : "pull", user.getAlias(), ip);
             // 点击取消则拒绝此处请求
             throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");

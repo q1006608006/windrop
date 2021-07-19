@@ -228,11 +228,11 @@ public class FileSwapController {
                 "来自设备: %s\n" +
                 "大小: %s\n" +
                 "md5摘要: %s", f.getName(), user.getAlias(), ConvertUtil.toShortSize(f.length()), md5);
-        if (!WinDropApplication.WindropHandler.confirm("来自" + ip, msg)) {
+        if (!WinDropApplication.confirm("来自" + ip, msg)) {
             try {
                 Files.delete(Paths.get(f.toURI()));
             } catch (IOException e) {
-                WinDropApplication.WindropHandler.alert("删除失败，请手动删除，文件路径: " + f.getAbsolutePath());
+                WinDropApplication.alert("删除失败，请手动删除，文件路径: " + f.getAbsolutePath());
             }
         }
     }

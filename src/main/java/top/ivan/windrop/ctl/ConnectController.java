@@ -157,7 +157,7 @@ public class ConnectController {
         } else {
             accessTime = maxAccess / (3600 * 24) + "天";
         }
-        return WinDropApplication.WindropHandler.confirm("新连接", "是否允许" + request.getDeviceId() + "(" + host + ")连接windrop[" + accessTime + "]?");
+        return WinDropApplication.confirm("新连接", "是否允许" + request.getDeviceId() + "(" + host + ")连接windrop[" + accessTime + "]?");
     }
 
     /**

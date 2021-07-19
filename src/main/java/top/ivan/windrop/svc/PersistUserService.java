@@ -97,7 +97,7 @@ public class PersistUserService {
                         data = SystemUtil.decrypt(data);
                     } catch (Exception e) {
                         log.error("", e);
-                        log.error("尝试解密文件失败，可能的情况为该应用是由其他机器移植而来！");
+                        log.error("数据文件解密失败");
                         userMap = new ConcurrentHashMap<>();
                         saveUserMap();
                         return userMap;

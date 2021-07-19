@@ -1,8 +1,8 @@
 package top.ivan.windrop.tray;
 
-import javafx.util.Pair;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import top.ivan.windrop.util.Pair;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -34,7 +34,7 @@ public class WindropSystemTray {
         menuList.forEach(p -> {
             if (Objects.equals(title, p.getKey())) list.add(p.getValue());
         });
-        return list.isEmpty() ? null : list;
+        return list;
     }
 
     private void init() {
@@ -45,15 +45,13 @@ public class WindropSystemTray {
         PopupMenu popMenu = new PopupMenu();
         initMenus(popMenu, elements);
 
-        TrayIcon trayIcon = new TrayIcon(icon, notifyText, popMenu);
+        trayIcon = new TrayIcon(icon, notifyText, popMenu);
         try {
             tray.add(trayIcon);
             trayIcon.setImageAutoSize(true);
-            this.trayIcon = trayIcon;
-        } catch (AWTException e1) {
-            e1.printStackTrace();
+        } catch (AWTException e) {
+            e.printStackTrace();
         }
-
     }
 
     private void initMenus(Menu menu, List<Pair<String, MenuElement>> elements) {
@@ -79,10 +77,6 @@ public class WindropSystemTray {
 
     public void showNotification(String message) {
         trayIcon.displayMessage(title, message, TrayIcon.MessageType.INFO);
-    }
-
-    public void showConfirm(String message) {
-
     }
 
     public TrayIcon getTrayIcon() {
