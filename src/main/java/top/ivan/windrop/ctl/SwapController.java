@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.function.Function;
 
 /**
  * @author Ivan
@@ -266,7 +267,7 @@ public class SwapController {
                     log.warn("un support type: {}", request.getType());
                     throw new HttpClientException(HttpStatus.BAD_REQUEST, "不支持的操作");
             }
-            log.info("receive {} from [{}]: {}", request.getType(), user.getAlias(), result);
+            log.info("receive {} from [{}]: {}", request.getType(), user.getAlias(), ConvertUtil.limitStringSize(result.toString(), 1024));
             return result;
         } catch (Exception e) {
             log.error("更新剪贴板失败", e);
@@ -284,6 +285,13 @@ public class SwapController {
      * @throws IOException io异常
      */
     private File createTempFile(byte[] data, String name, String suffix) throws IOException {
+        name = formatName(name);
+        if (StringUtils.isEmpty(suffix)) {
+            suffix = "";
+        } else {
+            suffix = suffix.startsWith(".") ? suffix : "." + suffix;
+        }
+
         File file = new File(TEMP_DIRECTORY_FILE, name + suffix);
         // 应用离开后删除文件
         file.deleteOnExit();
@@ -303,12 +311,8 @@ public class SwapController {
      * @throws IOException io异常
      */
     private FileClipBean setFile2Clipboard(WindropRequest clipboardData, byte[] data) throws IOException {
-        // 获取文件信息
-        String name = formatName(clipboardData.getFilename());
-        String suffix = StringUtils.isEmpty(clipboardData.getFileSuffix()) ? "" : "." + clipboardData.getFileSuffix();
-
         // 创建临时文件
-        File tempFile = createTempFile(data, name, suffix);
+        File tempFile = createTempFile(data, clipboardData.getFilename(), clipboardData.getFileSuffix());
         FileClipBean bean = new FileClipBean(tempFile, clipboardData.getClientUpdateTime());
         // 同步到剪贴板
         ClipUtil.setClipboard(bean);
@@ -324,12 +328,8 @@ public class SwapController {
      * @throws IOException io异常
      */
     private ImageFileClipBean setImage2Clipboard(WindropRequest clipboardData, byte[] data) throws IOException {
-        // 获取图片文件信息
-        String name = formatName(clipboardData.getFilename());
-        String suffix = "." + (StringUtils.isEmpty(clipboardData.getFileSuffix()) ? getImageType(data) : clipboardData.getFileSuffix());
-
         // 创建临时文件
-        File imageFile = createTempFile(data, name, suffix);
+        File imageFile = createTempFile(data, clipboardData.getFilename(), clipboardData.getFileSuffix());
 
         ImageFileClipBean bean = new ImageFileClipBean(imageFile, clipboardData.getClientUpdateTime());
         // 同步图片文件到剪贴板
@@ -347,14 +347,20 @@ public class SwapController {
      */
     private TextClipBean setText2Clipboard(WindropRequest clipboardData, byte[] data) throws IOException {
         String text = new String(data, config.getCharset());
-        TextClipBean bean = new TextClipBean(text, clipboardData.getClientUpdateTime(), t -> {
-            try {
-                return createTempFile(data, "文本-" + System.currentTimeMillis(), ".txt");
-            } catch (IOException e) {
-                log.error("无法创建文件", e);
-                return null;
-            }
-        });
+        Function<String, File> supply;
+        String suffix = clipboardData.getFileSuffix();
+
+        if (StringUtils.isEmpty(suffix)) {
+            suffix = "txt";
+        }
+        // 将超过长度限制的文本或非txt类型的文本保存为文件
+        if (data.length > config.getTextFileLimit() || !"txt".equals(suffix)) {
+            File textFile = createTempFile(data, clipboardData.getFilename(), suffix);
+            supply = s -> textFile;
+        } else {
+            supply = null;
+        }
+        TextClipBean bean = new TextClipBean(text, System.currentTimeMillis(), supply);
         ClipUtil.setClipboard(bean);
         return bean;
     }

@@ -196,4 +196,14 @@ public class ConvertUtil {
         }
         return bd.toString();
     }
+
+    public static String limitStringSize(String src, int limit) {
+        if (null != src && src.length() > limit) {
+            int f = limit / 2;
+            int e = limit - f;
+            return src.substring(0, f) + "\n......\n" +
+                    src.substring(src.length() - e - 1, src.length() - 1);
+        }
+        return src;
+    }
 }

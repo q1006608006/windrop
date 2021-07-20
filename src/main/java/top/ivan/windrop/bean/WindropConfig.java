@@ -25,6 +25,7 @@ public class WindropConfig {
 
     private int port;
     private long maxFileLength;
+    private long textFileLimit;
     private String encoding;
     private List<String> notify;
     private List<String> confirm;
