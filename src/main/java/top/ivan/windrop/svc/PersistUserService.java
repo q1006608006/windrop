@@ -79,10 +79,8 @@ public class PersistUserService {
     }
 
     public void deleteAll() throws IOException {
-        if (null != userMap) {
-            userMap.clear();
-            saveUserMap();
-        }
+        userMap = new ConcurrentHashMap<>();
+        saveUserMap();
     }
 
     private Map<String, AccessUser> takeUserMap() throws IOException {

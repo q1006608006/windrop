@@ -347,7 +347,14 @@ public class SwapController {
      */
     private TextClipBean setText2Clipboard(WindropRequest clipboardData, byte[] data) throws IOException {
         String text = new String(data, config.getCharset());
-        TextClipBean bean = new TextClipBean(text, clipboardData.getClientUpdateTime());
+        TextClipBean bean = new TextClipBean(text, clipboardData.getClientUpdateTime(), t -> {
+            try {
+                return createTempFile(data, "文本-" + System.currentTimeMillis(), ".txt");
+            } catch (IOException e) {
+                log.error("无法创建文件", e);
+                return null;
+            }
+        });
         ClipUtil.setClipboard(bean);
         return bean;
     }
