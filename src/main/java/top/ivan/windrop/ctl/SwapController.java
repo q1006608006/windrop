@@ -267,7 +267,7 @@ public class SwapController {
                     log.warn("un support type: {}", request.getType());
                     throw new HttpClientException(HttpStatus.BAD_REQUEST, "不支持的操作");
             }
-            log.info("receive {} from [{}]: {}", request.getType(), user.getAlias(), ConvertUtil.limitStringSize(result.toString(), 1024));
+            log.info("receive {} from [{}]: {}", request.getType(), user.getAlias(), ConvertUtil.limitStringSize(result.toString(), 256));
             return result;
         } catch (Exception e) {
             log.error("更新剪贴板失败", e);
