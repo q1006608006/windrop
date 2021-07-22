@@ -37,12 +37,11 @@ public class ConvertUtil {
     private static final IvParameterSpec SEC_IV;
 
     static {
-        byte[] sys = DigestUtils.md5(SystemUtil.getSystemKey());
+        SecureRandom sr = new SecureRandom(SystemUtil.getSystemKey().getBytes(StandardCharsets.UTF_8));
         byte[] iv = new byte[16];
-        System.arraycopy(sys,0,iv,0,16);
+        sr.nextBytes(iv);
         SEC_IV = new IvParameterSpec(iv);
     }
-
 
     private ConvertUtil() {
     }
