@@ -19,11 +19,10 @@ public class ValidService {
     private RandomAccessKeyService keyService;
 
     public Mono<Boolean> valid(String group, String sign, String... patterns) {
-        return WebHandler.ip().map(ip -> {
-            String key = keyService.getKey(group);
+        return WebHandler.ip().map(ip -> keyService.match(group, key -> {
             String content = ConvertUtil.combines(";", key, ip, patterns);
             return Objects.equals(sign, DigestUtils.sha256Hex(content));
-        });
+        }));
     }
 
     public String getValidKey(String group, int timeout) {

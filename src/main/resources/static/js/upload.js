@@ -28,8 +28,9 @@ function calculate(file, callBack) {
 
         fileReader.readAsBinaryString(blobSlice.call(file, start, end));
     }
+
     loadNext();
-};
+}
 
 function toShortSize(size) {
     let KB_SIZE = 1024;
@@ -47,17 +48,23 @@ function toShortSize(size) {
 }
 
 function toShortName(name) {
-    if(name.length > 24) {
-        return name.substr(0,15) + "..." + name.substr(name.length - 7)
+    if (name.length > 24) {
+        return name.substr(0, 15) + "..." + name.substr(name.length - 7)
     } else {
         return name;
     }
 }
 
+function showMsg(msg) {
+    // 添加提示框显示类
+    $('#alertDiv').addClass("show");
+    // 设置返回消息
+    $('#alertMsg').text(msg);
+}
+
 // 当input标签文件被置换
-$('.custom-file-input').on('change', function () {
-    let file = $(this)[0].files[0];
-    // $(this).next('.custom-file-label').html(toShortName(file.name));
+$('#customFile').on('change', function () {
+    let file = this.files[0];
     $('.custom-file-label').attr("data-browse", '').text(toShortName(file.name));
 
     $("#fileName").text(file.name)
@@ -72,28 +79,36 @@ $('.custom-file-input').on('change', function () {
 });
 // 重选文件，重选按钮被点击后执行
 $('.reset').click(function () {
-    $(this).parent().prev().children('.custom-file-label').html('点击选择...');
-    $('.custom-file-label').attr("data-browse", '选择文件');
+    $('.custom-file-label').attr("data-browse", '选择文件').text('点击选择...');
     $("#fileName").text('')
     $("#fileSize").text('')
     $("#fileMd5").text('')
+    $("#customFile").val('');
 
     // 恢复提交按钮
     // $('button[type=submit]').prop('disabled', false);
 });
 // 提交按钮被点击后执行
 $("#uploadFileBtn").click(function (e) {
-
     e.preventDefault();
-    // 置灰按钮无效，前台防止双重提交
-    $(this).prop('disabled', true);
 
     // 获取文件
     var file = $('#customFile')[0].files[0];
+    // 判断是否选择文件
+    if(undefined === file) {
+        showMsg("请选择文件")
+        return;
+    }
+
+    // 置灰按钮无效，前台防止双重提交
+    $(this).prop('disabled', true);
+    let act = this;
     var hidden = $('#hidden').attr("value");
     var formData = new FormData();
     formData.append("file", file);
     formData.append("hidden", hidden);
+
+    var bar = $('#progressBar');
 
     $.ajax({
         url: '/windrop/addition/upload',
@@ -109,33 +124,32 @@ $("#uploadFileBtn").click(function (e) {
             // 设置onprogress事件控制器
             xhr.upload.onprogress = function (event) {
                 var perc = Math.round((event.loaded / event.total) * 100);
-                $('#progressBar').text(perc + '%');
-                $('#progressBar').css('width', perc + '%');
+                bar.text(perc + '%');
+                bar.css('width', perc + '%');
             };
             return xhr;
         },
         beforeSend: function (xhr) {
             // 提交前重置提示消息为空，并重置进度条
             $('#alertMsg').text('');
-            $('#progressBar').text('');
-            $('#progressBar').css('width', '0%');
+            bar.text('');
+            bar.css('width', '0%');
+        },
+        finish: function () {
         }
     })
         .done(function (msg) {
             // 添加提示框显示类
-            $('#alertDiv').addClass("show");
-            // 设置返回消息
-            $('#alertMsg').text(msg.message);
+            showMsg(msg.message)
             // 清空文件
-            $('input[type=file]').val('');
+            $("#customFile").val('');
+            $('.custom-file-label').attr("data-browse", '选择文件').text('点击选择...');
             // 恢复提交按钮
             // $('button[type=submit]').prop('disabled', false);
+            $(act).prop("disabled", false)
         })
         .fail(function (jqXHR) {
-            // 添加提示框显示类
-            $('#alertDiv').addClass("show");
-            // 设置返回消息
-            $('#alertMsg').text("发生错误");
+            showMsg("发生错误")
         });
     return false;
 });

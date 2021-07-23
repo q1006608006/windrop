@@ -149,9 +149,11 @@ public class FileSwapController {
             return WebHandler.session().map(s -> {
                 AccessUser user = s.getAttribute("user");
                 if (null == user) {
-                    throw new HttpClientException(HttpStatus.FORBIDDEN, "未知来源的请求");
+                    throw new HttpClientException(HttpStatus.UNAUTHORIZED, "无法认证或已失效");
                 }
-                s.getAttributes().remove("user", user);
+                if (user.isExpired()) {
+                    throw new HttpClientException(HttpStatus.UNAUTHORIZED, "使用许可已过期");
+                }
                 return user;
             }).flatMap(user ->
                     fp.transferTo(p)
@@ -194,7 +196,7 @@ public class FileSwapController {
         String group = prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP);
         return validService.valid(group, sign, user.getValidKey())
                 .flatMap(success -> Boolean.TRUE.equals(success) ?
-                        Mono.just(true) : Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆"))
+                        Mono.just(true) : Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新验证"))
                 );
     }
 
@@ -234,6 +236,8 @@ public class FileSwapController {
             } catch (IOException e) {
                 WinDropApplication.alert("删除失败，请手动删除，文件路径: " + f.getAbsolutePath());
             }
+        } else {
+            WinDropApplication.open(f.getParentFile());
         }
     }
 

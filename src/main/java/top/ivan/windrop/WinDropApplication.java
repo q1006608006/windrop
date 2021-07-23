@@ -64,6 +64,14 @@ public class WinDropApplication {
         handlerInstant.systemTray.showNotification(msg);
     }
 
+    public static void open(File file) {
+        try {
+            Desktop.getDesktop().open(file);
+        } catch (IOException e) {
+            log.error("open \"" + file + "\" failed", e);
+        }
+    }
+
     public static class WindropHandler {
 
         public static final String ICON_START = "启动";
@@ -199,7 +207,7 @@ public class WinDropApplication {
                     alert("未找到'logs/server.log'文件");
                     log.warn("can't found 'logs/server.log'");
                 } else {
-                    Desktop.getDesktop().open(file);
+                    Desktop.getDesktop().open(file.getParentFile());
                 }
             } catch (Exception e) {
                 alert("无法打开日志文件");

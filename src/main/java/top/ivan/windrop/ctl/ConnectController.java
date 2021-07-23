@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.WinDropApplication;
 import top.ivan.windrop.WinDropConfiguration;
-import top.ivan.windrop.bean.AccessUser;
 import top.ivan.windrop.bean.ConnectRequest;
 import top.ivan.windrop.bean.ConnectResponse;
 import top.ivan.windrop.ex.HttpClientException;
@@ -124,12 +123,12 @@ public class ConnectController {
                 return userService.newUser(uid, request.getDeviceId(), realPwd, maxAccess);
             } catch (IOException e) {
                 log.error("create new user failed", e);
-                return Mono.error(new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常"));
+                throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常");
             } catch (Exception e) {
                 log.error("init user failed with option: " + option, e);
-                return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "bad request"));
+                throw new HttpClientException(HttpStatus.BAD_REQUEST, "用户服务异常");
             }
-        }).cast(AccessUser.class).map(user -> {
+        }).map(user -> {
             log.info("accept new connector for {}[{}]", user.getAlias(), user.getId());
             return ok(uid, validKey);
         });
