@@ -31,20 +31,21 @@ public class WindropConfig {
     private List<String> confirm;
 
     public boolean needNotify(String type, boolean isPush) {
-        if (null == notify) {
+        if (null == notify || notify.isEmpty()) {
             return false;
         }
         String iType = type.toLowerCase();
-        return notify.stream().map(String::toLowerCase).anyMatch(s -> s.equals("*") || s.equals(iType) || s.equals(isPush ? "push.*" : "pull.*") || s.equals((isPush ? "push." : "pull.") + iType));
+        return notify.stream().map(s -> s.toLowerCase().trim()).anyMatch(s ->
+                s.equals("*") || s.equals(iType) || s.equals(isPush ? "push.*" : "pull.*") || s.equals((isPush ? "push." : "pull.") + iType)
+        );
     }
 
     public boolean needConfirm(String type, boolean push) {
         String iType = type.toLowerCase();
-        return null == confirm
-                || confirm.stream().map(String::toLowerCase).anyMatch(s -> s.equals("*")
-                || s.equals(iType)
-                || s.equals(push ? "push.*" : "pull.*")
-                || s.equals((push ? "push." : "pull.") + iType))
+        return null == confirm || confirm.isEmpty() ||
+                confirm.stream().map(s -> s.toLowerCase().trim()).anyMatch(s ->
+                        s.equals("*") || s.equals(iType) || s.equals(push ? "push.*" : "pull.*") || s.equals((push ? "push." : "pull.") + iType)
+                )
                 || !operatorList.contains(iType);
     }
 

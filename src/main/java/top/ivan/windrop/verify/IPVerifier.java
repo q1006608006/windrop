@@ -1,9 +1,6 @@
 package top.ivan.windrop.verify;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import reactor.core.publisher.Mono;
-import top.ivan.windrop.ex.HttpClientException;
 import top.ivan.windrop.util.WatchedFile;
 
 import java.io.IOException;
@@ -25,21 +22,36 @@ public class IPVerifier {
     public IPVerifier(String ipListPath) {
         watchedFile = new WatchedFile(ipListPath);
         log.debug("加载白名单文件: '{}'", watchedFile.getFile().getAbsolutePath());
-        init();
+        if (!init()) {
+            log.warn("白名单初始化失败");
+        }
     }
 
-    private void init() {
+    private boolean init() {
         if (!watchedFile.isExist()) {
             accessList = null;
-            return;
+            log.warn("{} not exist", watchedFile.getFile().getName());
+            return false;
         }
+        List<String> lines;
         try {
-            List<String> lines = Files.readAllLines(watchedFile.getPath());
-            List<String> newAccessList = new ArrayList<>();
-            for (String line : lines) {
-                if (!line.contains(">")) {
-                    newAccessList.add(line);
-                } else {
+            lines = Files.readAllLines(watchedFile.getPath());
+        } catch (IOException e) {
+            log.error("can not init access list", e);
+            return false;
+        } finally {
+            watchedFile.sync();
+        }
+
+        List<String> newAccessList = new ArrayList<>();
+        for (String line : lines) {
+            if (line.trim().startsWith("#")) {
+                continue;
+            }
+            if (!line.contains(">")) {
+                newAccessList.add(line);
+            } else {
+                try {
                     String start = line.substring(0, line.indexOf('>'));
                     int length = Integer.parseInt(line.substring(line.indexOf('>') + 1));
                     String zone = start.replaceAll("(\\d+\\.\\d+\\.\\d+)\\.(\\d+)", "$1");
@@ -47,14 +59,13 @@ public class IPVerifier {
                     for (int i = 0; i < length; i++) {
                         newAccessList.add(zone + "." + (pos + i));
                     }
+                } catch (Exception e) {
+                    log.warn("can not parse text '{}'", line);
                 }
             }
-            accessList = newAccessList;
-        } catch (IOException e) {
-            log.error("读取白名单文件失败", e);
-        } finally {
-            watchedFile.sync();
         }
+        accessList = newAccessList;
+        return true;
     }
 
     public boolean accessible(String ip) {

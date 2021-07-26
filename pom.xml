@@ -10,7 +10,7 @@
     </parent>
     <groupId>top.ivan</groupId>
     <artifactId>windrop</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>v1.0.0</version>
     <name>windrop</name>
     <description>windows drop for iphone(or other device which support airdrop)</description>
 
