@@ -125,6 +125,12 @@
 
 * [Release](https://github.com/q1006608006/windrop/releases/download/v1.0.0/windrop-v1.0.0.tar.gz)
 
+  > 下载解压后进入文件夹，双击run.bat文件运行，右键单击右下角（任务栏）图标即可选择使用功能。
+
+  ![image](https://user-images.githubusercontent.com/31004882/126967866-cd1e1f94-4bbf-4dac-9b6a-4ce67ef37b37.png)
+
+  ![image](https://user-images.githubusercontent.com/31004882/126968231-daae820c-1cb4-4ddf-874f-681ef81d219e.png)
+
 * 快捷指令
 
   1. 共享
