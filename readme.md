@@ -129,7 +129,7 @@
 
   ![image](https://user-images.githubusercontent.com/31004882/126967866-cd1e1f94-4bbf-4dac-9b6a-4ce67ef37b37.png)
 
-  ![image](https://user-images.githubusercontent.com/31004882/126968231-daae820c-1cb4-4ddf-874f-681ef81d219e.png)
+  ![image](https://user-images.githubusercontent.com/31004882/126968443-aa7141ba-9db7-4d7e-9125-ae73a25034e8.png)
 
 * 快捷指令
 
