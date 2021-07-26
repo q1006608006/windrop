@@ -13,7 +13,7 @@ goto param
 :end
 
 set path=%path%;.;
-set app_jar=windrop-0.0.1-SNAPSHOT.jar
+set app_jar=${project.build.finalName}.jar
 
 set home_path=%cd%
 
