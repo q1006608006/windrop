@@ -135,19 +135,19 @@
 
   1. 共享
 
-     ![图像](https://user-images.githubusercontent.com/31004882/126964422-97d062e2-06c3-455e-be4a-5528beb24fdf.png)
+     ![共享](https://user-images.githubusercontent.com/31004882/126964422-97d062e2-06c3-455e-be4a-5528beb24fdf.png)
      
   2. 同步
   
-     ![图像-2](https://user-images.githubusercontent.com/31004882/126964579-b0a8bc88-7c6a-4ded-82f7-f1af7489cf64.png)
+     ![同步](https://user-images.githubusercontent.com/31004882/126964579-b0a8bc88-7c6a-4ded-82f7-f1af7489cf64.png)
   
   3. 扫描二维码
 
-     ![图像-2](https://user-images.githubusercontent.com/31004882/126964686-be6f8087-fc5e-4734-9900-f0207d56e6fd.png)
+     ![扫描二维码](https://user-images.githubusercontent.com/31004882/126964686-be6f8087-fc5e-4734-9900-f0207d56e6fd.png)
 
   4. 上传
 
-     ![图像-2](https://user-images.githubusercontent.com/31004882/126964770-9de705d9-81fa-4f34-b3b1-6f9add2da4aa.png)
+     ![上传](https://user-images.githubusercontent.com/31004882/126964770-9de705d9-81fa-4f34-b3b1-6f9add2da4aa.png)
 
 
 ## 进阶
