@@ -566,28 +566,4 @@ public class SwapController {
         return name;
     }
 
-    /**
-     * 获取图片真实类型
-     *
-     * @param is 图片二进制数据
-     * @return 图片类型
-     */
-    public static String getImageType(byte[] is) {
-        String type = "png";
-        if (is != null) {
-            byte[] b = Arrays.copyOf(is, 4);
-            String hexStr = new String(Hex.encodeHex(b)).toUpperCase();
-            if (hexStr.startsWith("FFD8FF")) {
-                type = "jpg";
-            } else if (hexStr.startsWith("89504E47")) {
-                type = "png";
-            } else if (hexStr.startsWith("47494638")) {
-                type = "gif";
-            } else if (hexStr.startsWith("424D")) {
-                type = "bmp";
-            }
-        }
-        return type;
-    }
-
 }
