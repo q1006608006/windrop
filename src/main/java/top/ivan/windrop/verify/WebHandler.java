@@ -13,15 +13,21 @@ import java.util.Objects;
  * @since 2021/05/28 15:50
  */
 public class WebHandler {
+    private WebHandler() {
+    }
 
-    public static ThreadLocal<ServerWebExchange> local = new ThreadLocal<>();
+    private static final ThreadLocal<ServerWebExchange> LOCAL = new ThreadLocal<>();
 
-    public static void setExchange(ServerWebExchange ex) {
-        local.set(ex);
+    static void setExchange(ServerWebExchange ex) {
+        LOCAL.set(ex);
+    }
+
+    static void cleanExchange() {
+        LOCAL.remove();
     }
 
     public static ServerWebExchange getLocalExchange() {
-        ServerWebExchange ex = local.get();
+        ServerWebExchange ex = LOCAL.get();
         if (null == ex) {
             throw new HttpServerException("can't supply ServerWebExchange in current");
         }
@@ -37,7 +43,7 @@ public class WebHandler {
     }
 
     public static Mono<ServerWebExchange> exchange() {
-        return Mono.subscriberContext().map(ctx -> ctx.get(ServerWebExchange.class));
+        return Mono.deferContextual(view -> Mono.just(view.get(ServerWebExchange.class)));
     }
 
     public static Mono<WebSession> session() {

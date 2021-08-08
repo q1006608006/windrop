@@ -43,7 +43,7 @@ public class FilesWatcher {
     }
 
     public void syncFile(File file) {
-        fileMap.computeIfAbsent(file, File::lastModified);
+        fileMap.computeIfPresent(file, (k, v) -> file.lastModified());
     }
 
 }
