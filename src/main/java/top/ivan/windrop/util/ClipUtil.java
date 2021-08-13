@@ -2,6 +2,7 @@ package top.ivan.windrop.util;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import top.ivan.windrop.bean.AccessUser;
 import top.ivan.windrop.clip.*;
 
 import java.awt.*;
@@ -12,7 +13,10 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Ivan
@@ -102,7 +106,7 @@ public class ClipUtil {
         }
         if (ts.isDataFlavorSupported(DataFlavor.selectionHtmlFlavor)) {
             String htmlContent = (String) ts.getTransferData(DataFlavor.selectionHtmlFlavor);
-            String imageStr = htmlContent.replace("\n", "").replaceAll(".*<img src=\"(.*)\"/><.*", "$1");
+            String imageStr = htmlContent.replace("\n", "").replaceAll(".*<img src=\"(.*?)\".*/><.*", "$1");
             int pos = imageStr.lastIndexOf("/");
             if (pos > -1) {
                 imageStr = imageStr.substring(pos);
@@ -151,4 +155,5 @@ public class ClipUtil {
         }
         return "unknown";
     }
+
 }

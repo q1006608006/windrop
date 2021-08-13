@@ -1,9 +1,8 @@
 package top.ivan.windrop.svc;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import top.ivan.windrop.bean.AccessUser;
+import top.ivan.windrop.util.JSONUtil;
 import top.ivan.windrop.util.SystemUtil;
 import top.ivan.windrop.util.WatchedFile;
 
@@ -101,7 +100,7 @@ public class PersistUserService {
                         return userMap;
                     }
                     BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(data)));
-                    userMap = reader.lines().map(str -> JSON.parseObject(str, AccessUser.class)).collect(Collectors.toMap(AccessUser::getId, u -> u));
+                    userMap = reader.lines().map(str -> JSONUtil.read(str, AccessUser.class)).collect(Collectors.toMap(AccessUser::getId, u -> u));
                     fileHandler.sync();
                 }
             }
@@ -111,7 +110,7 @@ public class PersistUserService {
 
     private synchronized void saveUserMap() throws IOException {
         Path path = fileHandler.getPath();
-        List<String> lists = userMap.values().stream().map(JSONObject::toJSONString).collect(Collectors.toList());
+        List<String> lists = userMap.values().stream().map(JSONUtil::toString).collect(Collectors.toList());
         String data = String.join("\n", lists);
         byte[] bytes = SystemUtil.encrypt(data.getBytes());
         Files.deleteIfExists(path);

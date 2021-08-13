@@ -1,6 +1,5 @@
 package top.ivan.windrop.ctl;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.WinDropApplication;
 import top.ivan.windrop.WinDropConfiguration;
+import top.ivan.windrop.bean.ConnectQrProperties;
 import top.ivan.windrop.bean.ConnectRequest;
 import top.ivan.windrop.bean.ConnectResponse;
 import top.ivan.windrop.ex.HttpClientException;
@@ -68,7 +68,7 @@ public class ConnectController {
                         .map(req -> req.getRemoteAddress().getAddress().getHostAddress())
                         .flatMap(host -> {
                             // 连接参数
-                            JSONObject option = connectHandler.getOption(request.getData());
+                            ConnectQrProperties.Option option = connectHandler.getOption(request.getData());
                             // 弹窗确认是否同意连接
                             if (!confirm(option, request, host)) {
                                 return Mono.just(failure("拒绝连接"));
@@ -109,10 +109,10 @@ public class ConnectController {
      * @param request 连接请求
      * @return 注册ID及密码验证码
      */
-    private Mono<ConnectResponse> createUser(JSONObject option, ConnectRequest request) {
+    private Mono<ConnectResponse> createUser(ConnectQrProperties.Option option, ConnectRequest request) {
         // 连接有效期
-        Integer maxAccess = option.getInteger("maxAccess");
-        String token = option.getString("token");
+        int maxAccess = option.getMaxAccess();
+        String token = option.getToken();
 
         // 生成设备ID及验证密钥
         String uid = generateId(request.getDeviceId(), request.getLocate());
@@ -142,8 +142,8 @@ public class ConnectController {
      * @param host    请求IP地址
      * @return 确认结果
      */
-    private boolean confirm(JSONObject opt, ConnectRequest request, String host) {
-        Integer maxAccess = opt.getInteger("maxAccess");
+    private boolean confirm(ConnectQrProperties.Option opt, ConnectRequest request, String host) {
+        int maxAccess = opt.getMaxAccess();
         String accessTime;
         if (maxAccess < 0) {
             accessTime = "永久";

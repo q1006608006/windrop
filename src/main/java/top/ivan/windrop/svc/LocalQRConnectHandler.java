@@ -1,15 +1,12 @@
 package top.ivan.windrop.svc;
 
-import com.alibaba.fastjson.JSONObject;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import top.ivan.windrop.bean.ConnectQrProperties;
 import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.ex.BadEncryptException;
 import top.ivan.windrop.random.RandomEncrypt;
-import top.ivan.windrop.util.IDUtil;
-
-import java.util.Objects;
+import top.ivan.windrop.util.JSONUtil;
 
 import static top.ivan.windrop.WinDropConfiguration.CONNECT_GROUP;
 
@@ -34,24 +31,17 @@ public class LocalQRConnectHandler extends LocalQRHandler {
     }
 
     public String newConnect(int second) {
-        JSONObject qrData = baseRequest("connect");
-
         String token = validService.getValidKey(CONNECT_GROUP, 90);
-        qrData.put("token", token);
-        JSONObject option = new JSONObject();
-        option.put("maxAccess", second);
-        option.put("token", token);
-        option.put("salt", IDUtil.getShortUuid());
-        String encryptData = randomEncrypt.encrypt(option.toJSONString());
-        qrData.put("data", encryptData);
+        ConnectQrProperties qrData = new ConnectQrProperties(token, second, randomEncrypt);
+        fixHost("connect", qrData);
 
-        String qrBody = qrData.toJSONString();
+        String qrBody = JSONUtil.toString(qrData);
         return qrCodeService.register(k -> qrBody, 1, 90);
     }
 
-    public JSONObject getOption(String data) throws BadEncryptException {
+    public ConnectQrProperties.Option getOption(String data) throws BadEncryptException {
         String body = randomEncrypt.decrypt(data);
-        return JSONObject.parseObject(body);
+        return JSONUtil.read(body, ConnectQrProperties.Option.class);
     }
 
     public void reset() {

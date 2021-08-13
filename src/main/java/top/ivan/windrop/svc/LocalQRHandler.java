@@ -1,7 +1,7 @@
 package top.ivan.windrop.svc;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.Getter;
+import top.ivan.windrop.bean.QrProperties;
 import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.util.SystemUtil;
 
@@ -20,14 +20,11 @@ public abstract class LocalQRHandler {
         this.config = config;
     }
 
-    public JSONObject baseRequest(String type) {
-        JSONObject qrData = new JSONObject();
-        qrData.put("type", type);
+    public <T extends QrProperties> void fixHost(String type, T props) {
+        props.setType(type);
         List<String> ipList = new ArrayList<>(SystemUtil.getLocalIPList());
         ipList.remove("127.0.0.1");
-        qrData.put("ipList", ipList);
-        qrData.put("port", config.getPort());
-
-        return qrData;
+        props.setIpList(ipList);
+        props.setPort(config.getPort());
     }
 }
