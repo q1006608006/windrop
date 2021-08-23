@@ -109,7 +109,6 @@ public class WinDropApplication {
         @Component
         public static class AppBeanHandler {
 
-            @Autowired
             private WindropConfig config;
             @Autowired
             private PersistUserService userService;
@@ -117,6 +116,12 @@ public class WinDropApplication {
             private LocalQRConnectHandler connectHandler;
             @Autowired
             private LocalQRFileSharedHandler fileSharedService;
+
+            @Autowired
+            public void setConfig(WindropConfig config) {
+                this.config = config;
+                System.getProperties().put("windrop.networkInterfaces", config.getNetworkInterfaces());
+            }
         }
 
         private WindropHandler(String[] args, SpringApplication application) {
