@@ -85,7 +85,7 @@ public class SystemUtil {
         if (itfList.isEmpty()) {
             return true;
         }
-        return itfList.stream().anyMatch(t->t.equalsIgnoreCase(itf.getDisplayName()));
+        return itfList.stream().anyMatch(t -> t.equalsIgnoreCase(itf.getDisplayName()));
     }
 
     public static String getDriveSN(String drive) {

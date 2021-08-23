@@ -26,6 +26,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -120,7 +121,11 @@ public class WinDropApplication {
             @Autowired
             public void setConfig(WindropConfig config) {
                 this.config = config;
-                System.getProperties().put("windrop.networkInterfaces", config.getNetworkInterfaces());
+                List<String> netList = config.getNetworkInterfaces();
+                if (null == netList) {
+                    netList = Collections.emptyList();
+                }
+                System.getProperties().put("windrop.networkInterfaces", netList);
             }
         }
 
