@@ -49,16 +49,16 @@ public class IPVerifyAspect {
             }
         };
         if (Mono.class.isAssignableFrom(rt)) {
-            return verifyIp().flatMap(v -> (Mono<?>) supplier.get());
+            return verify().flatMap(v -> (Mono<?>) supplier.get());
         } else if (Flux.class.isAssignableFrom(rt)) {
-            return verifyIp().flatMapMany(s -> (Flux<?>) supplier.get());
+            return verify().flatMapMany(s -> (Flux<?>) supplier.get());
         } else {
             verifyIP(WebHandler.getLocalExchange().getRequest().getRemoteAddress().getAddress().getHostAddress());
             return supplier.get();
         }
     }
 
-    private Mono<String> verifyIp() {
+    private Mono<String> verify() {
         return WebHandler.ip().doOnNext(this::verifyIP);
     }
 

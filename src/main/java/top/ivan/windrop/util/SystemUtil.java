@@ -68,7 +68,7 @@ public class SystemUtil {
                 inetAddresses = networkInterface.getInetAddresses();
                 while (inetAddresses.hasMoreElements()) {
                     inetAddress = inetAddresses.nextElement();
-                    if (inetAddress instanceof Inet4Address) { // IPV4
+                    if (inetAddress instanceof Inet4Address && testNetworkInterface(networkInterface)) { // IPV4
                         ip = inetAddress.getHostAddress();
                         ipList.add(ip);
                     }
@@ -78,6 +78,14 @@ public class SystemUtil {
             throw new RuntimeException(e);
         }
         return ipList;
+    }
+
+    private static boolean testNetworkInterface(NetworkInterface itf) {
+        List<String> itfList = (List<String>) System.getProperties().getOrDefault("windrop.networkInterfaces", Collections.emptyList());
+        if (itfList.isEmpty()) {
+            return true;
+        }
+        return itfList.stream().anyMatch(t -> t.equalsIgnoreCase(itf.getDisplayName()));
     }
 
     public static String getDriveSN(String drive) {

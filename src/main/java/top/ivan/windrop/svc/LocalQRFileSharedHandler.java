@@ -1,11 +1,12 @@
 package top.ivan.windrop.svc;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import top.ivan.windrop.bean.FileQrProperties;
 import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.util.IDUtil;
+import top.ivan.windrop.util.JSONUtil;
 
 import java.io.File;
 
@@ -32,11 +33,11 @@ public class LocalQRFileSharedHandler extends LocalQRHandler {
             String sharedKey = IDUtil.getShortUuid();
             sharedService.register(sharedKey, file, 1, second);
 
-            JSONObject obj = baseRequest("file");
-            obj.put("code", sharedKey);
+            FileQrProperties props = new FileQrProperties(sharedKey);
+            fixHost("file", props);
 
             log.info("share file[{}] with key '{}'", file.getName(), sharedKey);
-            return obj.toJSONString();
+            return JSONUtil.toString(props);
         }, count, second);
     }
 

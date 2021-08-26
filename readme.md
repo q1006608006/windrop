@@ -135,19 +135,16 @@
 
   1. 共享
 
-     ![共享](https://user-images.githubusercontent.com/31004882/126964422-97d062e2-06c3-455e-be4a-5528beb24fdf.png)
+     <https://www.icloud.com/shortcuts/e9c31a30e0e3414dae97beba9f61750c>
      
   2. 同步
   
-     ![同步](https://user-images.githubusercontent.com/31004882/126964579-b0a8bc88-7c6a-4ded-82f7-f1af7489cf64.png)
+     <https://www.icloud.com/shortcuts/e95a9ea7fbd34a22bc0d4d76ca74efd6>
   
   3. 扫描二维码
 
-     ![扫描二维码](https://user-images.githubusercontent.com/31004882/126964686-be6f8087-fc5e-4734-9900-f0207d56e6fd.png)
+     <https://www.icloud.com/shortcuts/c09d83ca94fc481583e992a8e31ef533>
 
   4. 上传
 
-     ![上传](https://user-images.githubusercontent.com/31004882/126964770-9de705d9-81fa-4f34-b3b1-6f9add2da4aa.png)
-
-
-## 进阶
+     <https://www.icloud.com/shortcuts/5183289b70b04f73804c30777b2faed4>

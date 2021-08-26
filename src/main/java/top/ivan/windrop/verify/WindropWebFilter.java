@@ -26,7 +26,7 @@ public class WindropWebFilter implements WebFilter {
         log.debug("receive request from '{}', path: {}, method: {}", request.getRemoteAddress(), request.getPath(), request.getMethod());
 
         WebHandler.setExchange(exchange);
-        return chain.filter(exchange).subscriberContext(ctx -> ctx.put(ServerWebExchange.class, exchange));
+        return chain.filter(exchange).contextWrite(ctx -> ctx.put(ServerWebExchange.class, exchange));
     }
 
 }

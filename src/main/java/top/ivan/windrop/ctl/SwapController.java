@@ -1,8 +1,6 @@
 package top.ivan.windrop.ctl;
 
-import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
@@ -27,6 +25,7 @@ import top.ivan.windrop.svc.ValidService;
 import top.ivan.windrop.util.ClipUtil;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
+import top.ivan.windrop.util.JSONUtil;
 import top.ivan.windrop.verify.VerifyIP;
 import top.ivan.windrop.verify.WebHandler;
 
@@ -34,7 +33,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.function.Function;
 
 /**
@@ -528,7 +526,7 @@ public class SwapController {
                     msg = "是否接收来自[" + user.getAlias() + "]的文本?";
                     break;
                 default:
-                    msg = "未定义请求: " + JSON.toJSONString(request);
+                    msg = "未定义请求: " + JSONUtil.toString(request);
                     break;
             }
         }
@@ -564,30 +562,6 @@ public class SwapController {
         String name = StringUtils.isEmpty(src) ? "copyfile" + System.currentTimeMillis() / 1000 : src;
         name = name.replaceAll("[\\\\/:*?\"<>|]", "");
         return name;
-    }
-
-    /**
-     * 获取图片真实类型
-     *
-     * @param is 图片二进制数据
-     * @return 图片类型
-     */
-    public static String getImageType(byte[] is) {
-        String type = "png";
-        if (is != null) {
-            byte[] b = Arrays.copyOf(is, 4);
-            String hexStr = new String(Hex.encodeHex(b)).toUpperCase();
-            if (hexStr.startsWith("FFD8FF")) {
-                type = "jpg";
-            } else if (hexStr.startsWith("89504E47")) {
-                type = "png";
-            } else if (hexStr.startsWith("47494638")) {
-                type = "gif";
-            } else if (hexStr.startsWith("424D")) {
-                type = "bmp";
-            }
-        }
-        return type;
     }
 
 }

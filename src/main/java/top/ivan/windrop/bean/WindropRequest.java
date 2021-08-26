@@ -1,6 +1,5 @@
 package top.ivan.windrop.bean;
 
-import com.alibaba.fastjson.annotation.JSONType;
 import lombok.Data;
 
 /**
@@ -9,7 +8,6 @@ import lombok.Data;
  * @date 2021/1/14
  */
 @Data
-@JSONType
 public class WindropRequest {
     /**
      * 设备id

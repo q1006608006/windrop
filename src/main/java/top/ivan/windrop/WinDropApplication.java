@@ -26,6 +26,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -109,7 +110,6 @@ public class WinDropApplication {
         @Component
         public static class AppBeanHandler {
 
-            @Autowired
             private WindropConfig config;
             @Autowired
             private PersistUserService userService;
@@ -117,6 +117,16 @@ public class WinDropApplication {
             private LocalQRConnectHandler connectHandler;
             @Autowired
             private LocalQRFileSharedHandler fileSharedService;
+
+            @Autowired
+            public void setConfig(WindropConfig config) {
+                this.config = config;
+                List<String> netList = config.getNetworkInterfaces();
+                if (null == netList) {
+                    netList = Collections.emptyList();
+                }
+                System.getProperties().put("windrop.networkInterfaces", netList);
+            }
         }
 
         private WindropHandler(String[] args, SpringApplication application) {

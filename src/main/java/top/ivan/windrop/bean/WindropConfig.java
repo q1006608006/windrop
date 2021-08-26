@@ -29,6 +29,7 @@ public class WindropConfig {
     private String encoding;
     private List<String> notify;
     private List<String> confirm;
+    private List<String> networkInterfaces;
 
     public boolean needNotify(String type, boolean isPush) {
         if (null == notify || notify.isEmpty()) {

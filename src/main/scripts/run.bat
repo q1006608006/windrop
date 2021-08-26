@@ -21,7 +21,11 @@ set home_path=%cd%
 set PARAM=%allparam%
 
 :: you can add your jvm-properties in here
+:: 程序使用gbk编码防止显示乱码
 set PROPERTIES=-Dfile.encoding=gbk
+
+:: 若需要指定网络接口删除下行的注释符，并将'lan1,wifi2'替换为你的网络适配器描述名词，如："Realtek PCIe Controller",可以指定多个，用逗号隔开
+:: set PROPERTIES=%PROPERTIES% -Dwindrop.networkInterfaces="lan1,wifi2"
 
 set conf_path=%home_path%/conf
 set lib_path=%home_path%/libs
