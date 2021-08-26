@@ -16,12 +16,13 @@ import java.util.List;
 @Slf4j
 public class IPVerifier {
 
-    private volatile List<String> accessList;
+    private final List<String> accessList;
     private final WatchedFile watchedFile;
 
     public IPVerifier(String ipListPath) {
         watchedFile = new WatchedFile(ipListPath);
         log.debug("加载白名单文件: '{}'", watchedFile.getFile().getAbsolutePath());
+        accessList = new ArrayList<>();
         if (!init()) {
             log.warn("白名单初始化失败");
         }
@@ -29,7 +30,9 @@ public class IPVerifier {
 
     private boolean init() {
         if (!watchedFile.isExist()) {
-            accessList = null;
+            synchronized (accessList) {
+                accessList.clear();
+            }
             log.warn("{} not exist", watchedFile.getFile().getName());
             return false;
         }
@@ -64,7 +67,10 @@ public class IPVerifier {
                 }
             }
         }
-        accessList = newAccessList;
+        synchronized (accessList) {
+            accessList.clear();
+            accessList.addAll(newAccessList);
+        }
         return true;
     }
 
