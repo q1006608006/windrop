@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import reactor.netty.http.client.HttpClient;
-import reactor.netty.tcp.SslProvider;
 
 /**
  * @author Ivan

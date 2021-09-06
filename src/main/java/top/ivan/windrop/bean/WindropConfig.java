@@ -52,7 +52,7 @@ public class WindropConfig {
     }
 
     public Charset getCharset() {
-        return StringUtils.isEmpty(encoding) ? StandardCharsets.UTF_8 : Charset.forName(encoding);
+        return StringUtils.hasLength(encoding) ? Charset.forName(encoding) : StandardCharsets.UTF_8;
     }
 
 }

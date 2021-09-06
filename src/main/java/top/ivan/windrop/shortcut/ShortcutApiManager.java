@@ -64,7 +64,7 @@ public class ShortcutApiManager {
 
     private Supplier<ShortcutApi> httpSuppler() {
         HttpClient client = HttpClient.create().secure(SslProvider.defaultClientProvider());
-        String json = client.get().uri(apiUrl).responseContent().toString();
+        String json = client.get().uri(apiUrl).responseContent().asString().collectList().map(l -> String.join("\n", l)).block();
         try {
             ShortcutApi api = JSONUtil.read(json, ShortcutApi.class);
             return () -> api;
