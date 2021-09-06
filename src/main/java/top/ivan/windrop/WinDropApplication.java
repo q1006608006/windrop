@@ -52,7 +52,7 @@ public class WinDropApplication {
     }
 
     public static boolean confirm(String title, String msg) {
-        if (StringUtils.isEmpty(title)) {
+        if (!StringUtils.hasLength(title)) {
             title = "请选择";
         }
         handlerInstant.unVisibleFrame.setVisible(true);
