@@ -191,6 +191,10 @@ public class WinDropApplication {
             openQrCodeOnBrowse(key);
         }
 
+        private void showText(String text) {
+            openQrCodeOnBrowse(beanHandler.textHandler.shareText(text));
+        }
+
         private void showConfig() {
             File config = new File("conf/config.properties");
             try {
@@ -325,10 +329,10 @@ public class WinDropApplication {
                     .addSecondLabel(ICON_SHOW_CODE, "1月", (m, t) -> showConnectCode(60 * 60 * 24 * 30))
                     .addSecondLabel(ICON_SHOW_CODE, null, null)
                     .addSecondLabel(ICON_SHOW_CODE, "永久", (m, t) -> showConnectCode(-1))
-                    .addSecondLabel(ICON_SHOW_SHORTCUT, "分享", (m, t) -> beanHandler.textHandler.shareText(beanHandler.apiManager.getShare()))
-                    .addSecondLabel(ICON_SHOW_SHORTCUT, "同步", (m, t) -> beanHandler.textHandler.shareText(beanHandler.apiManager.getSync()))
-                    .addSecondLabel(ICON_SHOW_SHORTCUT, "扫描二维码", (m, t) -> beanHandler.textHandler.shareText(beanHandler.apiManager.getScan()))
-                    .addSecondLabel(ICON_SHOW_SHORTCUT, "上传", (m, t) -> beanHandler.textHandler.shareText(beanHandler.apiManager.getUpload()))
+                    .addSecondLabel(ICON_SHOW_SHORTCUT, "分享", (m, t) -> showText(beanHandler.apiManager.getShare()))
+                    .addSecondLabel(ICON_SHOW_SHORTCUT, "同步", (m, t) -> showText(beanHandler.apiManager.getSync()))
+                    .addSecondLabel(ICON_SHOW_SHORTCUT, "扫描二维码", (m, t) -> showText(beanHandler.apiManager.getScan()))
+                    .addSecondLabel(ICON_SHOW_SHORTCUT, "上传", (m, t) -> showText(beanHandler.apiManager.getUpload()))
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_CONFIG, (m, t) -> showConfig())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_ACCESSIBLE, (m, t) -> showAccessible())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_REMOVE_DEVICES, (m, t) -> clearDevice())
