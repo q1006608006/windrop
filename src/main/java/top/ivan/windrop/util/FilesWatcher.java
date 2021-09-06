@@ -30,7 +30,7 @@ public class FilesWatcher {
     }
 
     public void thenIfUpdated(File file, Consumer<File> accept) {
-        if (fileMap.containsKey(file) && fileMap.get(file) != file.lastModified()) {
+        if (isUpdated(file)) {
             synchronized (fileMap) {
                 if (fileMap.get(file) != file.lastModified()) {
                     fileMap.put(file, file.lastModified());

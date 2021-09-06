@@ -27,4 +27,8 @@ public abstract class LocalQRHandler {
         props.setIpList(ipList);
         props.setPort(config.getPort());
     }
+
+    public static String getUrlPath(String host, String key) {
+        return host + "/windrop/code/" + key;
+    }
 }
