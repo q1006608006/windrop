@@ -11,9 +11,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Hooks;
 import top.ivan.windrop.bean.WindropConfig;
-import top.ivan.windrop.svc.LocalQRConnectHandler;
-import top.ivan.windrop.svc.LocalQRFileSharedHandler;
-import top.ivan.windrop.svc.PersistUserService;
+import top.ivan.windrop.shortcut.ShortcutApiManager;
+import top.ivan.windrop.svc.*;
 import top.ivan.windrop.tray.WindropSystemTray;
 import top.ivan.windrop.util.SystemUtil;
 
@@ -23,7 +22,6 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
@@ -80,6 +78,7 @@ public class WinDropApplication {
         public static final String ICON_RESTART = "重启";
 
         public static final String ICON_SHOW_CODE = "连接码";
+        public static final String ICON_SHOW_SHORTCUT = "快捷指令";
         public static final String ICON_MENU_CONFIG = "配置";
         public static final String ICON_SHOW_CONFIG = "打开配置文件";
         public static final String ICON_SHOW_ACCESSIBLE = "白名单";
@@ -117,6 +116,10 @@ public class WinDropApplication {
             private LocalQRConnectHandler connectHandler;
             @Autowired
             private LocalQRFileSharedHandler fileSharedService;
+            @Autowired
+            private ShortcutApiManager apiManager;
+            @Autowired
+            private LocalQRTextHandler textHandler;
 
             @Autowired
             public void setConfig(WindropConfig config) {
@@ -184,15 +187,9 @@ public class WinDropApplication {
         }
 
         private void showConnectCode(int second) {
-            try {
-                String key = beanHandler.connectHandler.newConnect(second);
-                Desktop.getDesktop().browse(new URI(getURLPrefix() + "/windrop/code/" + key));
-            } catch (Exception e) {
-                alert("无法打开网页");
-                log.error("open browser failed", e);
-            }
+            String key = beanHandler.connectHandler.newConnect(second);
+            openQrCodeOnBrowse(key);
         }
-
 
         private void showConfig() {
             File config = new File("conf/config.properties");
@@ -263,13 +260,7 @@ public class WinDropApplication {
                 return;
             }
             String qrKey = beanHandler.fileSharedService.sharedFile(selectorFile, 5, 300);
-            try {
-                URI uri = new URI(getURLPrefix() + "/windrop/code/" + qrKey);
-                Desktop.getDesktop().browse(uri);
-            } catch (URISyntaxException | IOException e) {
-                alert("无法打开网页");
-                log.error("open browser failed", e);
-            }
+            openQrCodeOnBrowse(qrKey);
         }
 
         private void openReceivedFolder() {
@@ -309,6 +300,15 @@ public class WinDropApplication {
             }
         }
 
+        private void openQrCodeOnBrowse(String qrCodeKey) {
+            try {
+                Desktop.getDesktop().browse(new URI(LocalQRHandler.getUrlPath(getURLPrefix(), qrCodeKey)));
+            } catch (Exception e) {
+                alert("无法打开浏览器");
+                log.error("open browser failed", e);
+            }
+        }
+
         private void createTray() {
             WindropSystemTray.Builder builder = new WindropSystemTray.Builder();
             builder.showText("WinDrop").icon(iconImage)
@@ -325,6 +325,10 @@ public class WinDropApplication {
                     .addSecondLabel(ICON_SHOW_CODE, "1月", (m, t) -> showConnectCode(60 * 60 * 24 * 30))
                     .addSecondLabel(ICON_SHOW_CODE, null, null)
                     .addSecondLabel(ICON_SHOW_CODE, "永久", (m, t) -> showConnectCode(-1))
+                    .addSecondLabel(ICON_SHOW_SHORTCUT, "分享", (m, t) -> beanHandler.textHandler.shareText(beanHandler.apiManager.getShare()))
+                    .addSecondLabel(ICON_SHOW_SHORTCUT, "同步", (m, t) -> beanHandler.textHandler.shareText(beanHandler.apiManager.getSync()))
+                    .addSecondLabel(ICON_SHOW_SHORTCUT, "扫描二维码", (m, t) -> beanHandler.textHandler.shareText(beanHandler.apiManager.getScan()))
+                    .addSecondLabel(ICON_SHOW_SHORTCUT, "上传", (m, t) -> beanHandler.textHandler.shareText(beanHandler.apiManager.getUpload()))
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_CONFIG, (m, t) -> showConfig())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_SHOW_ACCESSIBLE, (m, t) -> showAccessible())
                     .addSecondLabel(ICON_MENU_CONFIG, ICON_REMOVE_DEVICES, (m, t) -> clearDevice())
