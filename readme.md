@@ -58,6 +58,12 @@
 
   - 可选10分钟、1小时、3小时、1天、1周、1月及永久
 
+- 快捷指令
+
+  > 设备端使用设备自带的扫码软件扫描对应二维码即可安装对应快捷指令
+
+  - 可选`扫描二维码`、`分享`、`同步`、`上传`
+
 - 打开配置文件
 
   - 示例
@@ -123,7 +129,7 @@
 
 ### 下载Windrop
 
-* [Release](https://github.com/q1006608006/windrop/releases/download/v1.0.0/windrop-v1.0.0.tar.gz)
+* [Release](https://gitee.com/badtheway/windrop/attach_files/836269/download/windrop-v1.0.0.tar.gz)
 
   > 下载解压后进入文件夹，双击run.bat文件运行，右键单击右下角（任务栏）图标即可选择使用功能。
 
@@ -133,18 +139,18 @@
 
 * 快捷指令
 
-  1. 共享
+  1. 分享
 
-     <https://www.icloud.com/shortcuts/e9c31a30e0e3414dae97beba9f61750c>
+     <https://www.icloud.com/shortcuts/4f8233b96c364cbe8074b2cff1c81216>
      
   2. 同步
   
-     <https://www.icloud.com/shortcuts/e95a9ea7fbd34a22bc0d4d76ca74efd6>
+     <https://www.icloud.com/shortcuts/92c2e4d881a047749700f3b893988687>
   
   3. 扫描二维码
 
-     <https://www.icloud.com/shortcuts/c09d83ca94fc481583e992a8e31ef533>
+     <https://www.icloud.com/shortcuts/810100dc168c486787f246c78a1f19fb>
 
   4. 上传
 
-     <https://www.icloud.com/shortcuts/5183289b70b04f73804c30777b2faed4>
+     <https://www.icloud.com/shortcuts/ba3b784966b641c985fe09eef45a95f1>
