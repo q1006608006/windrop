@@ -284,7 +284,7 @@ public class SwapController {
      */
     private File createTempFile(byte[] data, String name, String suffix) throws IOException {
         name = formatName(name);
-        if (StringUtils.isEmpty(suffix)) {
+        if (!StringUtils.hasLength(suffix)) {
             suffix = "";
         } else {
             suffix = suffix.startsWith(".") ? suffix : "." + suffix;
@@ -348,7 +348,7 @@ public class SwapController {
         Function<String, File> supply;
         String suffix = clipboardData.getFileSuffix();
 
-        if (StringUtils.isEmpty(suffix)) {
+        if (!StringUtils.hasLength(suffix)) {
             suffix = "txt";
         }
         // 将超过长度限制的文本或非txt类型的文本保存为文件
@@ -382,13 +382,18 @@ public class SwapController {
                 // 获取文本数据
                 srcData = ((TextClipBean) clipBean).getBytes(config.getCharset());
             } else if (clipBean instanceof FileClipBean) {
+                FileClipBean fb = (FileClipBean) clipBean;
+                if (fb.isDir()) {
+                    fb = fb.covert2Zip(getTempPath(getZipName(fb.getFile())));
+                    clipBean = fb;
+                }
                 // 判断文件大小
-                if (((FileClipBean) clipBean).getLength() > config.getMaxFileLength()) {
+                if (fb.getLength() > config.getMaxFileLength()) {
                     throw new LengthTooLargeException();
                 }
                 // 获取文件数据
-                fileName = ((FileClipBean) clipBean).getFileName();
-                srcData = clipBean.getBytes();
+                fileName = fb.getFileName();
+                srcData = fb.getBytes();
             } else if (clipBean instanceof ImageClipBean) {
                 // 判断图片大小
                 if (clipBean.getBytes().length > config.getMaxFileLength()) {
@@ -439,12 +444,21 @@ public class SwapController {
         String registerKey = DigestUtils.sha256Hex(String.join(";", resourceId, ip, user.getValidKey()));
         if (clipBean instanceof FileBean) {
             // 注册文件类型资源
+            if (clipBean instanceof FileClipBean && ((FileClipBean) clipBean).isDir()) {
+                FileClipBean fb = (FileClipBean) clipBean;
+                try {
+                    clipBean = fb.covert2Zip(getTempPath(getZipName(fb.getFile())));
+                } catch (IOException e) {
+                    throw new UnsupportedOperationException(e);
+                }
+            }
             sharedService.register(registerKey, ((FileBean) clipBean).getFile(), 1, 180);
         } else {
             // 注册二进制类型资源
+            ClipBean byteBean = clipBean;
             sharedService.register(registerKey, () -> {
                 try {
-                    return new ByteArrayResource(clipBean.getBytes());
+                    return new ByteArrayResource(byteBean.getBytes());
                 } catch (IOException ioException) {
                     throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "加载数据异常");
                 }
@@ -559,9 +573,19 @@ public class SwapController {
      * @return 格式化后的文件名
      */
     private static String formatName(String src) {
-        String name = StringUtils.isEmpty(src) ? "copyfile" + System.currentTimeMillis() / 1000 : src;
+        String name = !StringUtils.hasLength(src) ? "copyfile" + System.currentTimeMillis() / 1000 : src;
         name = name.replaceAll("[\\\\/:*?\"<>|]", "");
         return name;
     }
 
+    private static String getTempPath(String filename) {
+        return new File(TEMP_DIRECTORY_FILE, filename).getAbsolutePath();
+    }
+
+    private static String getZipName(File file) {
+        if (file.isDirectory()) {
+            return file.getName() + ".zip";
+        }
+        return file.getName().replaceAll("(.*)(\\..*)?", "$1.zip");
+    }
 }

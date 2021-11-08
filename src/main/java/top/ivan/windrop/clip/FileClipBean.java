@@ -15,6 +15,7 @@ public class FileClipBean implements ClipBean, FileBean {
     private byte[] data;
     private final File src;
     private final long updateTime;
+    private FileClipBean zip = null;
 
     public FileClipBean(File file, long updateTime) {
         this.src = file;
@@ -25,16 +26,31 @@ public class FileClipBean implements ClipBean, FileBean {
     public synchronized byte[] getBytes() throws IOException {
         if (data == null) {
             if (src.isDirectory()) {
-                ByteArrayOutputStream bout = new ByteArrayOutputStream();
-                ZipOutputStream out = new ZipOutputStream(bout);
-                nioZip(out, src, src.getName());
-                out.close();
-                this.data = bout.toByteArray();
+                throw new UnsupportedOperationException("un support covert a directory to byte arrays, use covert2Zip() instead it");
             } else {
                 this.data = Files.readAllBytes(Paths.get(src.toURI()));
             }
         }
         return data;
+    }
+
+    public synchronized FileClipBean covert2Zip(String path) throws IOException {
+        if (null != zip) {
+            return zip;
+        }
+        File file = new File(path);
+        if (file.isDirectory()) {
+            file = new File(file, src.getName() + ".zip");
+        }
+        if (file.exists()) {
+            throw new IOException(file.getName() + " already exists");
+        }
+
+        try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(file))) {
+            nioZip(out, src, src.getName());
+        }
+        this.zip = new FileClipBean(file, System.currentTimeMillis() / 1000);
+        return zip;
     }
 
     private static void zip(ZipOutputStream out, File f, String base)
@@ -81,11 +97,11 @@ public class FileClipBean implements ClipBean, FileBean {
         } else {
             out.putNextEntry(new ZipEntry(base)); // 创建新的进入点
             // 创建FileInputStream对象
-            FileInputStream fileIn = new FileInputStream(f);
-            FileChannel fileChannel = fileIn.getChannel();
-            fileChannel.transferTo(0, f.length(), outChannel);
-            fileChannel.close();
-            fileIn.close(); // 关闭流
+            try (FileInputStream fileIn = new FileInputStream(f)) {
+                FileChannel fileChannel = fileIn.getChannel();
+                fileChannel.transferTo(0, f.length(), outChannel);
+                fileChannel.close();
+            }
         }
     }
 
@@ -114,29 +130,12 @@ public class FileClipBean implements ClipBean, FileBean {
         return src;
     }
 
-    public long getLength() {
-        if (src.isDirectory()) {
-            return dirLength(src);
-        } else {
-            return src.length();
-        }
+    public boolean isDir() {
+        return src.isDirectory();
     }
 
-    private static long dirLength(File dir) {
-        File[] files = dir.listFiles();
-        if (files != null) {
-            long len = 0;
-            for (File file : files) {
-                if (file.isDirectory()) {
-                    len += dirLength(file);
-                } else {
-                    len += file.length();
-                }
-            }
-            return len;
-        } else {
-            return 0;
-        }
+    public long getLength() {
+        return src.length();
     }
 
     @Override
