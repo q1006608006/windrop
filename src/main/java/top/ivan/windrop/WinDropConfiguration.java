@@ -3,9 +3,11 @@ package top.ivan.windrop;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.http.converter.BufferedImageHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.ScheduledService;
 import top.ivan.windrop.util.SystemUtil;
@@ -53,4 +55,15 @@ public class WinDropConfiguration {
     public ScheduledService getScheduledService() {
         return new ScheduledService(3);
     }
+
+    @Bean("asyncExecutor")
+    public AsyncTaskExecutor getLogAsyncTaskExecutor() {
+        ThreadPoolTaskExecutor asyncTaskExecutor = new ThreadPoolTaskExecutor();
+        asyncTaskExecutor.setMaxPoolSize(4);
+        asyncTaskExecutor.setCorePoolSize(2);
+        asyncTaskExecutor.setThreadNamePrefix("async-executor-");
+        asyncTaskExecutor.initialize();
+        return asyncTaskExecutor;
+    }
+
 }

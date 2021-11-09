@@ -25,6 +25,7 @@ import top.ivan.windrop.svc.ResourceSharedService;
 import top.ivan.windrop.svc.ValidService;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
+import top.ivan.windrop.util.InitialResource;
 import top.ivan.windrop.verify.VerifyIP;
 import top.ivan.windrop.verify.WebHandler;
 
@@ -87,17 +88,26 @@ public class FileSwapController {
     @ResponseBody
     @GetMapping(value = "download/{key}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public Mono<Resource> download(@PathVariable String key, ServerHttpResponse response) {
-        Resource res = resourceSharedService.findResource(key);
-        if (null == res) {
-            return Mono.error(new HttpClientException(HttpStatus.NOT_FOUND, "资源不存在或已过期"));
-        }
-        return Mono.just(res).doOnNext(resource -> {
-            if (resource.isFile()) {
-                String filename = Optional.ofNullable(resource.getFilename()).orElse(IDUtil.getShortUuid());
-                filename = new String(filename.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1);
-                response.getHeaders().set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
-            }
-        });
+        return Mono.just(resourceSharedService.findResource(key))
+                .flatMap(r -> r instanceof InitialResource ?
+                        Mono.fromSupplier(() -> {
+                            try {
+                                return ((InitialResource) r).getResource();
+                            } catch (Exception e) {
+                                log.error("initialize resource failed", e);
+                                throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+                            }
+                        })
+                        : Mono.justOrEmpty(r)
+                )
+                .switchIfEmpty(Mono.error(() -> new HttpClientException(HttpStatus.NOT_FOUND, "资源不存在或已过期")))
+                .doOnNext(resource -> {
+                    if (resource.isFile()) {
+                        String filename = Optional.ofNullable(resource.getFilename()).orElse(IDUtil.getShortUuid());
+                        filename = new String(filename.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1);
+                        response.getHeaders().set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
+                    }
+                });
     }
 
     /**
