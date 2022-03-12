@@ -144,7 +144,7 @@ public class SystemUtil {
 
     public static String getCpuSN() {
         try {
-            Process process = Runtime.getRuntime().exec(new String[]{"wmic", "cpu", "get", "ProcessorId"});
+            Process process = Runtime.getRuntime().exec(new String[]{"C:\\Windows\\System32\\wbem\\WMIC.exe", "cpu", "get", "ProcessorId"});
             process.getOutputStream().close();
             Scanner sc = new Scanner(process.getInputStream());
             sc.next();
@@ -156,7 +156,7 @@ public class SystemUtil {
     }
 
     public static String getSystemKey() {
-        if (StringUtils.isEmpty(systemKey)) {
+        if (!StringUtils.hasLength(systemKey)) {
             String keyStr = String.join(";", SystemUtil.getPCName(), SystemUtil.getMotherboardSN(), SystemUtil.getCpuSN());
             systemKey = DigestUtils.md5Hex(keyStr);
         }
