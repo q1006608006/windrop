@@ -1,5 +1,7 @@
 package top.ivan.windrop.clip;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.awt.datatransfer.Transferable;
 import java.io.*;
 import java.nio.channels.Channels;
@@ -8,14 +10,18 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+@Slf4j
 public class FileClipBean implements ClipBean, FileBean {
     private byte[] data;
     private final File src;
     private final long updateTime;
     private FileClipBean zip = null;
+    private volatile boolean complete = true;
 
     public FileClipBean(File file, long updateTime) {
         this.src = file;
@@ -42,14 +48,43 @@ public class FileClipBean implements ClipBean, FileBean {
         if (file.isDirectory()) {
             file = new File(file, src.getName() + ".zip");
         }
-        if (file.exists()) {
-            throw new IOException(file.getName() + " already exists");
+        if (!file.exists()) {
+            try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(file))) {
+                nioZip(out, src, src.getName());
+            }
+        }
+        this.zip = new FileClipBean(file, updateTime);
+        return zip;
+    }
+
+    public synchronized FileClipBean covert2Zip(String path, Executor executor, Consumer<File> accept) {
+        if (null != zip && zip.src.exists()) {
+            return zip;
         }
 
-        try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(file))) {
-            nioZip(out, src, src.getName());
+        File file = new File(path);
+        if (file.isDirectory()) {
+            file = new File(file, src.getName() + ".zip");
         }
-        this.zip = new FileClipBean(file, System.currentTimeMillis() / 1000);
+
+        File fin = file;
+        this.zip = new FileClipBean(file, updateTime);
+        zip.complete = false;
+        executor.execute(() -> {
+            boolean failed = false;
+            if (!fin.exists()) {
+                try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(fin))) {
+                    nioZip(out, src, src.getName());
+                } catch (IOException e) {
+                    failed = true;
+                    log.error("zip file failed", e);
+                }
+            }
+            zip.complete = true;
+            if (!failed && accept != null) {
+                accept.accept(fin);
+            }
+        });
         return zip;
     }
 
@@ -135,11 +170,33 @@ public class FileClipBean implements ClipBean, FileBean {
     }
 
     public long getLength() {
-        return src.length();
+        return isDir() ? dirLength(src) : src.length();
+    }
+
+    public boolean isComplete() {
+        return complete;
     }
 
     @Override
     public String toString() {
         return getFile().getAbsolutePath();
     }
+
+    private static long dirLength(File dir) {
+        File[] files = dir.listFiles();
+        if (files != null) {
+            long len = 0;
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    len += dirLength(file);
+                } else {
+                    len += file.length();
+                }
+            }
+            return len;
+        } else {
+            return 0;
+        }
+    }
+
 }

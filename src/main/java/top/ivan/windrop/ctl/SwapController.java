@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.StringUtils;
@@ -22,13 +24,11 @@ import top.ivan.windrop.ex.LengthTooLargeException;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.ResourceSharedService;
 import top.ivan.windrop.svc.ValidService;
-import top.ivan.windrop.util.ClipUtil;
-import top.ivan.windrop.util.ConvertUtil;
-import top.ivan.windrop.util.IDUtil;
-import top.ivan.windrop.util.JSONUtil;
+import top.ivan.windrop.util.*;
 import top.ivan.windrop.verify.VerifyIP;
 import top.ivan.windrop.verify.WebHandler;
 
+import javax.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -78,6 +78,9 @@ public class SwapController {
      */
     @Autowired
     private ValidService validService;
+
+    @Resource(name = "asyncExecutor")
+    private AsyncTaskExecutor asyncExecutor;
 
     /**
      * 定时清理临时文件
@@ -383,13 +386,13 @@ public class SwapController {
                 srcData = ((TextClipBean) clipBean).getBytes(config.getCharset());
             } else if (clipBean instanceof FileClipBean) {
                 FileClipBean fb = (FileClipBean) clipBean;
-                if (fb.isDir()) {
-                    fb = fb.covert2Zip(getTempPath(getZipName(fb.getFile())));
-                    clipBean = fb;
-                }
                 // 判断文件大小
                 if (fb.getLength() > config.getMaxFileLength()) {
                     throw new LengthTooLargeException();
+                }
+                if (fb.isDir()) {
+                    fb = fb.covert2Zip(getTempPath(getZipName(fb.getFile())));
+                    clipBean = fb;
                 }
                 // 获取文件数据
                 fileName = fb.getFileName();
@@ -446,13 +449,12 @@ public class SwapController {
             // 注册文件类型资源
             if (clipBean instanceof FileClipBean && ((FileClipBean) clipBean).isDir()) {
                 FileClipBean fb = (FileClipBean) clipBean;
-                try {
-                    clipBean = fb.covert2Zip(getTempPath(getZipName(fb.getFile())));
-                } catch (IOException e) {
-                    throw new UnsupportedOperationException(e);
-                }
+                fb = fb.covert2Zip(getTempPath(getZipName(fb.getFile())), asyncExecutor, file -> log.info("zip '{}' finished", file));
+                clipBean = fb;
+                sharedService.register(registerKey, new InitialFileClipBeanResource(fb), 1, 180);
+            } else {
+                sharedService.register(registerKey, ((FileBean) clipBean).getFile(), 1, 180);
             }
-            sharedService.register(registerKey, ((FileBean) clipBean).getFile(), 1, 180);
         } else {
             // 注册二进制类型资源
             ClipBean byteBean = clipBean;
@@ -587,5 +589,23 @@ public class SwapController {
             return file.getName() + ".zip";
         }
         return file.getName().replaceAll("(.*)(\\..*)?", "$1.zip");
+    }
+
+    private static class InitialFileClipBeanResource extends InitialResource {
+        private final FileClipBean fcb;
+
+        public InitialFileClipBeanResource(FileClipBean fcb) {
+            this.fcb = fcb;
+        }
+
+        @Override
+        public boolean isReady() {
+            return fcb.isComplete();
+        }
+
+        @Override
+        public org.springframework.core.io.Resource takeResource() {
+            return new FileSystemResource(fcb.getFile());
+        }
     }
 }
