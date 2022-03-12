@@ -135,6 +135,8 @@
 
   ![image](https://user-images.githubusercontent.com/31004882/126967866-cd1e1f94-4bbf-4dac-9b6a-4ce67ef37b37.png)
 
-  ![image](https://user-images.githubusercontent.com/31004882/126968443-aa7141ba-9db7-4d7e-9125-ae73a25034e8.png)
+  ![image](https://user-images.githubusercontent.com/31004882/158022607-03d8e8de-7028-4027-b49d-24e5966b2a8c.png)
 
 * 快捷指令获取方式
+
+  ![image](https://user-images.githubusercontent.com/31004882/158022545-0621a9a7-6278-4c8b-bdc5-5c276225b00c.png)
