@@ -133,28 +133,14 @@
 
 ### 下载Windrop
 
-* [Release](https://gitee.com/badtheway/windrop/attach_files/836269/download/windrop-v1.0.0.tar.gz)
+* [Release](https://github.com/q1006608006/windrop/releases/download/v1.0.1/windrop-v1.0.1.tar.gz)
 
   > 下载解压后进入文件夹，双击run.bat文件运行，右键单击右下角（任务栏）图标即可选择使用功能。
 
   ![image](https://user-images.githubusercontent.com/31004882/126967866-cd1e1f94-4bbf-4dac-9b6a-4ce67ef37b37.png)
 
-  ![image](https://user-images.githubusercontent.com/31004882/126968443-aa7141ba-9db7-4d7e-9125-ae73a25034e8.png)
+  ![image](https://user-images.githubusercontent.com/31004882/158022607-03d8e8de-7028-4027-b49d-24e5966b2a8c.png)
 
-* 快捷指令
+* 快捷指令获取方式
 
-  1. 分享
-
-     <https://www.icloud.com/shortcuts/4f8233b96c364cbe8074b2cff1c81216>
-     
-  2. 同步
-  
-     <https://www.icloud.com/shortcuts/92c2e4d881a047749700f3b893988687>
-  
-  3. 扫描二维码
-
-     <https://www.icloud.com/shortcuts/810100dc168c486787f246c78a1f19fb>
-
-  4. 上传
-
-     <https://www.icloud.com/shortcuts/ba3b784966b641c985fe09eef45a95f1>
+  ![image](https://user-images.githubusercontent.com/31004882/158022545-0621a9a7-6278-4c8b-bdc5-5c276225b00c.png)
