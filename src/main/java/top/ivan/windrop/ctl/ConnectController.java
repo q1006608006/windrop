@@ -89,9 +89,9 @@ public class ConnectController {
     private Mono<ConnectRequest> valid(Mono<ConnectRequest> mono) {
         return mono.flatMap(req -> {
             // 校验参数
-            if (StringUtils.isEmpty(req.getDeviceId())
-                    || StringUtils.isEmpty(req.getSign())
-                    || StringUtils.isEmpty(req.getData())) {
+            if (!StringUtils.hasLength(req.getDeviceId())
+                    || !StringUtils.hasLength(req.getSign())
+                    || !StringUtils.hasLength(req.getData())) {
                 return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "bad request"));
             }
             // 验证设备有效性(sha256(wifi名称,设备ID,randomKey,核验密钥))
