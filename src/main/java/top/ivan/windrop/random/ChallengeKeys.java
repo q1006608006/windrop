@@ -52,7 +52,4 @@ public class ChallengeKeys<T> {
         return false;
     }
 
-    public void onClean(ChallengeTask<T> task, Runnable run) {
-        task.onClean(run);
-    }
 }

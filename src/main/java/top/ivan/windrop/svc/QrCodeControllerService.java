@@ -43,7 +43,7 @@ public class QrCodeControllerService {
         }
         ChallengeTask<Void> task = accessService.register(key, second * 1000L, 3 * 60 * 1000L, count);
         dataSupplierMap.put(key, supplier);
-        accessService.onClean(task, () -> dataSupplierMap.remove(key, supplier));
+        task.onClean(() -> dataSupplierMap.remove(key, supplier));
     }
 
     public String getData(String key) throws CacheNotFoundException, CacheNotAccessException, CacheTimeoutException {

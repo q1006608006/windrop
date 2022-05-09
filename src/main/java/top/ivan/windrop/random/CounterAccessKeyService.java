@@ -29,7 +29,4 @@ public class CounterAccessKeyService {
         return challengeKeys.challenge(key, null);
     }
 
-    public void onClean(ChallengeTask<Void> task, Runnable run) {
-        challengeKeys.onClean(task, run);
-    }
 }

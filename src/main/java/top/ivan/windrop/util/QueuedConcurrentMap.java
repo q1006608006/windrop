@@ -21,7 +21,7 @@ public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
     public QueuedConcurrentMap(int max, BiPredicate<K, V> removeEldest, BiConsumer<K, V> cleanAction) {
         this.maxSize = max;
         this.keyQueue = new LinkedBlockingQueue<>(maxSize * 2);
-        this.removeEldest = removeEldest == null ? (k, v) -> true : removeEldest;
+        this.removeEldest = removeEldest;
         this.cleanAction = cleanAction == null ? (k, v) -> {
         } : cleanAction;
     }
@@ -72,6 +72,9 @@ public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
     }
 
     private void checkForFull() {
+        if(null == removeEldest) {
+            return;
+        }
         if (size() > maxSize) {
             List<K> list = new ArrayList<>(keyQueue);
             for (K k : list) {

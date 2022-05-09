@@ -11,82 +11,77 @@ public class RandomAccessKey {
     private volatile String accessKey;
     private volatile long lastUpdateTime;
 
-    private final AtomicBoolean isUpdate = new AtomicBoolean(false);
-    private final AtomicBoolean inCompare = new AtomicBoolean(false);
+    private final AtomicBoolean inUpdate = new AtomicBoolean(false);
+    private final AtomicBoolean inChangeTime = new AtomicBoolean(false);
 
     public RandomAccessKey(int interval) {
         this.intervalMillis = interval * 1000L;
     }
 
     public boolean tryUpdate() {
-        if (isUpdate.compareAndSet(false, true)) {
+        if (inUpdate.compareAndSet(false, true)) {
             accessKey = IDUtil.getShortUuid();
+
+            while (!inChangeTime.compareAndSet(false, true)) {
+            }
             lastUpdateTime = getTime();
-            isUpdate.set(false);
+            inChangeTime.set(false);
+            inUpdate.set(false);
             return true;
         }
         return false;
     }
 
-    private void syncUpdate() {
-        if (!tryUpdate()) waitUpdate();
-    }
-
     private void waitUpdate() {
-        while (isUpdate.get()) ;
-    }
-
-    private void equalThenExpired(long compareTime) {
-        if (compareTime == lastUpdateTime && isUpdate.compareAndSet(false, true)) {
-            if (compareTime == lastUpdateTime) {
-                lastUpdateTime = compareTime - intervalMillis - 1;
-            }
-            isUpdate.set(false);
-        }
+        while (inUpdate.get()) ;
     }
 
     public String getAccessKey() {
-        waitUpdate();
-        if (isTimeout()) {
-            syncUpdate();
+        if (isTimeout() && !tryUpdate()) {
+            waitUpdate();
         }
         return accessKey;
     }
 
     public boolean match(Predicate<String> predicate, boolean matchThenExpired) {
+        long curLastUpdateTime = lastUpdateTime;
+
         if (isTimeout()) {
             tryUpdate();
             return false;
         }
 
-        while (true) {
-            if (inCompare.compareAndSet(false, true)) {
-                long curLastUpdateTime = lastUpdateTime;
-                if (isUpdate.get() || isTimeout()) {
-                    return false;
-                }
-                try {
-                    boolean status = false;
-                    if (predicate.test(accessKey)) {
-                        if (matchThenExpired) {
-                            equalThenExpired(curLastUpdateTime);
-                        }
-                        status = true;
-                    }
-                    return status;
-                } finally {
-                    inCompare.set(false);
-                }
+        if (!inUpdate.get() && predicate.test(accessKey)) {
+            if (matchThenExpired) {
+                return expired(curLastUpdateTime);
+            } else {
+                return true;
             }
         }
+
+        return false;
     }
 
     public String getOriginKey() {
         return accessKey;
     }
 
-    public void expired() {
-        equalThenExpired(lastUpdateTime);
+    public boolean expired() {
+        return expired(lastUpdateTime);
+    }
+
+    public boolean expired(long compare) {
+        if(inChangeTime.compareAndSet(false,true)) {
+            try {
+                if (compare == lastUpdateTime) {
+                    lastUpdateTime = -1;
+                    return true;
+                }
+            } finally {
+                inChangeTime.set(false);
+            }
+        }
+        return false;
     }
 
     public boolean isTimeout() {

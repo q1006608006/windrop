@@ -41,7 +41,7 @@ public class ChallengeTask<T> extends ReentrantLock {
         return State.FAILED;
     }
 
-    void onClean(Runnable run) {
+    public void onClean(Runnable run) {
         this.onClean = run;
     }
 
