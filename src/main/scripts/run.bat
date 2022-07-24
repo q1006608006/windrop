@@ -37,7 +37,7 @@ if defined extra_path  (
 )
 
 
-set CMD=javaw %PROPERTIES% -Dloader.path=%loader_path% -jar %lib_path%/%app_jar% %PARAM%
+set CMD=javaw %PROPERTIES% -Dloader.path="%loader_path%" -jar "%lib_path%/%app_jar%" %PARAM%
 
 echo %CMD%
 
