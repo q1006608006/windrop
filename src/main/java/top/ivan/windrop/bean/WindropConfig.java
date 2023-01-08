@@ -31,6 +31,7 @@ public class WindropConfig {
     private List<String> confirm;
     private List<String> networkInterfaces;
     private String shortcutApi = "shortcut.json";
+    private String open = "false";
 
     public boolean needNotify(String type, boolean isPush) {
         if (null == notify || notify.isEmpty()) {

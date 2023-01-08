@@ -22,6 +22,7 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
@@ -68,6 +69,16 @@ public class WinDropApplication {
             Desktop.getDesktop().open(file);
         } catch (IOException e) {
             log.error("open \"" + file + "\" failed", e);
+        }
+    }
+
+    public static void openBrowse(String url) {
+        try {
+            Desktop.getDesktop().browse(new URI(url));
+        } catch (IOException e) {
+            log.error("can not open url: " + url, e);
+        } catch (URISyntaxException e) {
+            log.error("illegal url syntax: " + url, e);
         }
     }
 
