@@ -47,7 +47,10 @@ import java.util.regex.Pattern;
 @RequestMapping("/windrop")
 public class SwapController {
     private static final File TEMP_DIRECTORY_FILE;
-    public static final Pattern URL_PATTERN = Pattern.compile("((http|ftp|https)://)(([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,6})|([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(:[0-9]{1,4})*(/[a-zA-Z0-9&%_./-~-]*)?");
+    private static final Pattern URL_PATTERN = Pattern.compile("((http|ftp|https)://)(([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,6})|([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(:[0-9]{1,4})*(/[a-zA-Z0-9&%_./-~-]*)?");
+    public static final String RES_TYPE_FILE = "文件";
+    public static final String RES_TYPE_URL = "网址";
+
 
     static {
         //创建临时文件夹
@@ -570,12 +573,12 @@ public class SwapController {
         String resType;
         if (bean instanceof FileClipBean) {
             resName = ((FileClipBean) bean).getFileName();
-            resType = "文件";
+            resType = RES_TYPE_FILE;
         } else if (bean instanceof TextClipBean) {
             String txt = ((TextClipBean) bean).getText();
             if (StringUtils.hasLength(txt) && URL_PATTERN.matcher(txt).matches()) {
                 resName = txt;
-                resType = "文本";
+                resType = RES_TYPE_URL;
             } else {
                 return rs;
             }
@@ -587,10 +590,10 @@ public class SwapController {
             if ("force".equals(config.getOpen()) || WinDropApplication.confirm(ip, "是否打开" + resType + ": " + resName + "?")) {
                 return rs.doFinally(s -> {
                     if (SignalType.ON_COMPLETE == s) {
-                        if ("文本".equals(resType)) {
-                            WinDropApplication.openBrowse(resName);
-                        } else {
+                        if (RES_TYPE_FILE.equals(resType)) {
                             WinDropApplication.open(((FileClipBean) bean).getFile());
+                        } else {
+                            WinDropApplication.openBrowse(resName);
                         }
                     }
                 });
