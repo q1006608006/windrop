@@ -1,8 +1,10 @@
 package top.ivan.windrop.clip;
 
 import net.coobird.thumbnailator.Thumbnails;
+import sun.awt.image.MultiResolutionCachedImage;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -14,7 +16,7 @@ public class ImageClipBean implements ClipBean {
 
     private byte[] data;
 
-    private BufferedImage image;
+    private Image image;
 
     private long updateTime;
 
@@ -29,7 +31,7 @@ public class ImageClipBean implements ClipBean {
         this.updateTime = updateTime;
     }
 
-    public ImageClipBean(BufferedImage image, String format, long updateTime) {
+    public ImageClipBean(Image image, String format, long updateTime) {
         this.image = image;
         this.format = format;
         this.updateTime = updateTime;
@@ -38,9 +40,21 @@ public class ImageClipBean implements ClipBean {
     @Override
     public synchronized byte[] getBytes() throws IOException {
         if (data == null) {
-            data = getImageBytes(getImage(), format);
+            Image img = getImage();
+            data = getImageBytes(convert2Buffered(img), format);
         }
         return data;
+    }
+
+    private static BufferedImage convert2Buffered(Image img) {
+        if(img instanceof BufferedImage) {
+            return (BufferedImage) img;
+        }
+        BufferedImage buffered = new BufferedImage(img.getWidth(null),img.getHeight(null),BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = buffered.createGraphics();
+        g.drawImage(img,0,0,null);
+        g.dispose();
+        return buffered;
     }
 
     @Override
@@ -67,7 +81,7 @@ public class ImageClipBean implements ClipBean {
         return bout.toByteArray();
     }
 
-    public BufferedImage getImage() throws IOException {
+    public Image getImage() throws IOException {
         if (image == null) {
             this.image = ImageIO.read(new ByteArrayInputStream(data));
         }

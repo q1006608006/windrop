@@ -18,25 +18,27 @@ import static top.ivan.windrop.WinDropConfiguration.CONNECT_GROUP;
 @Service
 public class LocalQRConnectHandler extends LocalQRHandler {
 
+    private static final int EXPIRE_TIME = 90;
+
     @Autowired
     private QrCodeControllerService qrCodeService;
 
     @Autowired
     private ValidService validService;
 
-    private final RandomEncrypt randomEncrypt = new RandomEncrypt(90);
+    private final RandomEncrypt randomEncrypt = new RandomEncrypt(EXPIRE_TIME);
 
     public LocalQRConnectHandler(WindropConfig config) {
         super(config);
     }
 
     public String newConnect(int second) {
-        String token = validService.getValidKey(CONNECT_GROUP, 90);
+        String token = validService.getValidKey(CONNECT_GROUP, EXPIRE_TIME);
         ConnectQrProperties qrData = new ConnectQrProperties(token, second, randomEncrypt);
         fixHost("connect", qrData);
 
         String qrBody = JSONUtil.toString(qrData);
-        return qrCodeService.register(k -> qrBody, 1, 90);
+        return qrCodeService.register(k -> qrBody, 1, EXPIRE_TIME);
     }
 
     public ConnectQrProperties.Option getOption(String data) throws BadEncryptException {
