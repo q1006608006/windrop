@@ -51,7 +51,7 @@ public class ClipUtil {
                     if (origin instanceof File) {
                         target = new ImageFileClipBean((File) origin, currentTimestamp());
                     } else {
-                        target = new ImageClipBean((BufferedImage) origin, type, currentTimestamp());
+                        target = new ImageClipBean((Image) origin, type, currentTimestamp());
                     }
                 }
             } else if (ts.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {

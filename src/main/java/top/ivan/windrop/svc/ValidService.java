@@ -1,5 +1,6 @@
 package top.ivan.windrop.svc;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.util.Objects;
  * @since 2021/07/13 10:45
  */
 @Service
+@Slf4j
 public class ValidService {
     @Autowired
     private RandomAccessKeyService keyService;
