@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.SignalType;
 import top.ivan.windrop.WinDropApplication;
 import top.ivan.windrop.WinDropConfiguration;
 import top.ivan.windrop.bean.*;
@@ -34,6 +35,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 /**
  * @author Ivan
@@ -45,6 +47,10 @@ import java.util.function.Function;
 @RequestMapping("/windrop")
 public class SwapController {
     private static final File TEMP_DIRECTORY_FILE;
+    private static final Pattern URL_PATTERN = Pattern.compile("((http|ftp|https)://)(([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,6})|([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(:[0-9]{1,4})*(/[a-zA-Z0-9&%_./-~-]*)?");
+    public static final String RES_TYPE_FILE = "文件";
+    public static final String RES_TYPE_URL = "网址";
+
 
     static {
         //创建临时文件夹
@@ -87,7 +93,7 @@ public class SwapController {
      *
      * @throws IOException
      */
-    @Scheduled(cron = "* 0/15 * * * ?")
+    @Scheduled(cron = "0 0/15 * * * ?")
     public void cleanTempFile() throws IOException {
         log.debug("start clean old file...");
         File[] files = TEMP_DIRECTORY_FILE.listFiles();
@@ -156,6 +162,7 @@ public class SwapController {
             return validPushRequest(user, request, data)
                     // 更新剪贴板内容
                     .map(r -> set2Clipboard(request, data, user))
+                    .flatMap(this::tryOpen)
                     .flatMap(bean ->
                             // 返回成功结果
                             Mono.just(CommonResponse.success("更新成功"))
@@ -553,6 +560,48 @@ public class SwapController {
             // 点击取消则拒绝此处请求
             throw new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消");
         }
+    }
+
+    private Mono<ClipBean> tryOpen(ClipBean bean) {
+        Mono<ClipBean> rs = Mono.just(bean);
+
+        if ("false".equals(config.getOpen())) {
+            return rs;
+        }
+
+        String resName;
+        String resType;
+        if (bean instanceof FileClipBean) {
+            resName = ((FileClipBean) bean).getFileName();
+            resType = RES_TYPE_FILE;
+        } else if (bean instanceof TextClipBean) {
+            String txt = ((TextClipBean) bean).getText();
+            if (StringUtils.hasLength(txt) && URL_PATTERN.matcher(txt).matches()) {
+                resName = txt;
+                resType = RES_TYPE_URL;
+            } else {
+                return rs;
+            }
+        } else {
+            return rs;
+        }
+
+        return WebHandler.ip().flatMap(ip -> {
+            if ("force".equals(config.getOpen()) || WinDropApplication.confirm(ip, "是否打开" + resType + ": " + resName + "?")) {
+                return rs.doFinally(s -> {
+                    if (SignalType.ON_COMPLETE == s) {
+                        if (RES_TYPE_FILE.equals(resType)) {
+                            WinDropApplication.open(((FileClipBean) bean).getFile());
+                        } else {
+                            WinDropApplication.openBrowse(resName);
+                        }
+                    }
+                });
+            } else {
+                return rs;
+            }
+        });
+
     }
 
     /**

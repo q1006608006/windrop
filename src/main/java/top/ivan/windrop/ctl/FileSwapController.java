@@ -31,7 +31,8 @@ import top.ivan.windrop.verify.WebHandler;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -104,8 +105,11 @@ public class FileSwapController {
                 .doOnNext(resource -> {
                     if (resource.isFile()) {
                         String filename = Optional.ofNullable(resource.getFilename()).orElse(IDUtil.getShortUuid());
-                        filename = new String(filename.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1);
-                        response.getHeaders().set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
+                        try {
+                            filename = URLEncoder.encode(filename, "UTF8");
+                        } catch (UnsupportedEncodingException ignored) {
+                        }
+                        response.getHeaders().set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + filename);
                     }
                 });
     }
