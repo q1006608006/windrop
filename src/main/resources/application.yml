@@ -18,8 +18,11 @@ spring:
 logging:
   level:
     root: info
+    valid: info
   file:
-    max-history: 1
-    max-size: 20MB
-    clean-history-on-start: true
     name: logs/server.log
+  logback:
+    rollingpolicy:
+      max-history: 1
+      max-file-size: 20MB
+      clean-history-on-start: true
