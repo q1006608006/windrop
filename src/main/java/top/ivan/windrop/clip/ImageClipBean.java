@@ -10,7 +10,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.List;
 
 public class ImageClipBean implements ClipBean {
 
@@ -47,12 +47,18 @@ public class ImageClipBean implements ClipBean {
     }
 
     private static BufferedImage convert2Buffered(Image img) {
-        if(img instanceof BufferedImage) {
+        if (img instanceof BufferedImage) {
             return (BufferedImage) img;
         }
-        BufferedImage buffered = new BufferedImage(img.getWidth(null),img.getHeight(null),BufferedImage.TYPE_INT_ARGB);
+        if (img instanceof MultiResolutionCachedImage) {
+            List<Image> ims = ((MultiResolutionCachedImage) img).getResolutionVariants();
+            if (!ims.isEmpty() && ims.get(0) instanceof BufferedImage) {
+                return (BufferedImage) ims.get(0);
+            }
+        }
+        BufferedImage buffered = new BufferedImage(img.getWidth(null), img.getHeight(null), BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = buffered.createGraphics();
-        g.drawImage(img,0,0,null);
+        g.drawImage(img, 0, 0, null);
         g.dispose();
         return buffered;
     }
@@ -69,9 +75,7 @@ public class ImageClipBean implements ClipBean {
 
     @Override
     public boolean isOrigin(Object target) throws IOException {
-        if (target instanceof BufferedImage) {
-            return Arrays.equals(getBytes(), getImageBytes((BufferedImage) target, this.format));
-        }
+        //always need to load image-bytes, so just return false is better
         return false;
     }
 

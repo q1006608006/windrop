@@ -12,6 +12,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import top.ivan.windrop.WinDropApplication;
 import top.ivan.windrop.WinDropConfiguration;
 import top.ivan.windrop.bean.AccessUser;
@@ -102,6 +103,7 @@ public class FileSwapController {
                         : Mono.justOrEmpty(r)
                 )
                 .switchIfEmpty(Mono.error(() -> new HttpClientException(HttpStatus.NOT_FOUND, "资源不存在或已过期")))
+                .publishOn(Schedulers.boundedElastic())
                 .doOnNext(resource -> {
                     if (resource.isFile()) {
                         String filename = Optional.ofNullable(resource.getFilename()).orElse(IDUtil.getShortUuid());

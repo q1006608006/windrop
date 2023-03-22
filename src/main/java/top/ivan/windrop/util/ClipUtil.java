@@ -150,7 +150,7 @@ public class ClipUtil {
     }
 
     public static String getClipBeanType(ClipBean clipBean) {
-        if (clipBean instanceof FileClipBean) {
+        if (clipBean instanceof FileBean) {
             return "file";
         } else if (clipBean instanceof ImageClipBean) {
             return "image";
