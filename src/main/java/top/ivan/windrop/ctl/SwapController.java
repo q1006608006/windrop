@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
 @RequestMapping("/windrop")
 public class SwapController {
     private static final File TEMP_DIRECTORY_FILE;
-    private static final Pattern URL_PATTERN = Pattern.compile("((http|ftp|https)://)(([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,6})|([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(:[0-9]{1,4})*(/[a-zA-Z0-9&%_./-~-]*)?");
+    private static final Pattern URL_PATTERN = Pattern.compile("(((http|ftp|https)://)(([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,6})|([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(:[0-9]{1,4})*)(/[a-zA-Z0-9&%_./-~-]*)?");
     public static final String RES_TYPE_FILE = "文件";
     public static final String RES_TYPE_URL = "网址";
 
@@ -391,19 +391,19 @@ public class SwapController {
             if (clipBean instanceof TextClipBean) {
                 // 获取文本数据
                 srcData = ((TextClipBean) clipBean).getBytes(config.getCharset());
-            } else if (clipBean instanceof FileClipBean) {
-                FileClipBean fb = (FileClipBean) clipBean;
+            } else if (clipBean instanceof FileBean) {
+                FileBean fb = (FileBean) clipBean;
+                File src = fb.getFile();
                 // 判断文件大小
-                if (fb.getLength() > config.getMaxFileLength()) {
+                if (FileUtil.getFilesLength(src) > config.getMaxFileLength()) {
                     throw new LengthTooLargeException();
                 }
-                if (fb.isDir()) {
-                    fb = fb.covert2Zip(getTempPath(getZipName(fb.getFile())));
-                    clipBean = fb;
+                if (src.isDirectory()) {
+                    clipBean = covert2Zip(src, getTempPath(getZipName(src)), null, true);
                 }
                 // 获取文件数据
-                fileName = fb.getFileName();
-                srcData = fb.getBytes();
+                fileName = ((FileBean) clipBean).getFileName();
+                srcData = clipBean.getBytes();
             } else if (clipBean instanceof ImageClipBean) {
                 // 判断图片大小
                 if (clipBean.getBytes().length > config.getMaxFileLength()) {
@@ -454,11 +454,11 @@ public class SwapController {
         String registerKey = DigestUtils.sha256Hex(String.join(";", resourceId, ip, user.getValidKey()));
         if (clipBean instanceof FileBean) {
             // 注册文件类型资源
-            if (clipBean instanceof FileClipBean && ((FileClipBean) clipBean).isDir()) {
-                FileClipBean fb = (FileClipBean) clipBean;
-                fb = fb.covert2Zip(getTempPath(getZipName(fb.getFile())), asyncExecutor, file -> log.info("zip '{}' finished", file));
-                clipBean = fb;
-                sharedService.register(registerKey, new InitialFileClipBeanResource(fb), 1, 180);
+            if (((FileBean) clipBean).getFile().isDirectory()) {
+                FileBean fb = (FileBean) clipBean;
+                InitialResourceWrapper delay = new InitialResourceWrapper();
+                clipBean = covert2Zip(fb.getFile(), getTempPath(getZipName(fb.getFile())), delay, false);
+                sharedService.register(registerKey, delay, 1, 180);
             } else {
                 sharedService.register(registerKey, ((FileBean) clipBean).getFile(), 1, 180);
             }
@@ -484,6 +484,37 @@ public class SwapController {
 
         log.info("sync file/octet-stream to [{}] with id: {}", user.getAlias(), resourceId);
         return resp;
+    }
+
+    public FileClipBean covert2Zip(File src, String path, InitialResourceWrapper wrapper, boolean sync) {
+        File file = new File(path);
+        if (file.isDirectory()) {
+            file = new File(file, src.getName() + ".zip");
+        }
+
+        File fin = file;
+        Runnable run = () -> {
+            boolean failed = false;
+            if (!fin.exists()) {
+                try {
+                    ZipUtil.nioZip(src, fin);
+                } catch (IOException e) {
+                    failed = true;
+                    log.error("zip file failed", e);
+                }
+            }
+            log.info("zip '{}' finished", fin);
+            if (!failed && wrapper != null) {
+                wrapper.complete(fin);
+            }
+        };
+        if (sync) {
+            run.run();
+        } else {
+            asyncExecutor.execute(run);
+        }
+
+        return new FileClipBean(fin, System.currentTimeMillis());
     }
 
     /**
@@ -571,8 +602,8 @@ public class SwapController {
 
         String resName;
         String resType;
-        if (bean instanceof FileClipBean) {
-            resName = ((FileClipBean) bean).getFileName();
+        if (bean instanceof FileBean) {
+            resName = ((FileBean) bean).getFileName();
             resType = RES_TYPE_FILE;
         } else if (bean instanceof TextClipBean) {
             String txt = ((TextClipBean) bean).getText();
@@ -591,7 +622,7 @@ public class SwapController {
                 return rs.doFinally(s -> {
                     if (SignalType.ON_COMPLETE == s) {
                         if (RES_TYPE_FILE.equals(resType)) {
-                            WinDropApplication.open(((FileClipBean) bean).getFile());
+                            WinDropApplication.open(((FileBean) bean).getFile());
                         } else {
                             WinDropApplication.openBrowse(resName);
                         }
@@ -640,21 +671,25 @@ public class SwapController {
         return file.getName().replaceAll("(.*)(\\..*)?", "$1.zip");
     }
 
-    private static class InitialFileClipBeanResource extends InitialResource {
-        private final FileClipBean fcb;
+    private static class InitialResourceWrapper extends InitialResource {
 
-        public InitialFileClipBeanResource(FileClipBean fcb) {
-            this.fcb = fcb;
+        private File file;
+
+        public InitialResourceWrapper() {
         }
 
         @Override
         public boolean isReady() {
-            return fcb.isComplete();
+            return file != null;
+        }
+
+        public void complete(File file) {
+            this.file = file;
         }
 
         @Override
         public org.springframework.core.io.Resource takeResource() {
-            return new FileSystemResource(fcb.getFile());
+            return new FileSystemResource(file);
         }
     }
 }

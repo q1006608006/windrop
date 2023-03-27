@@ -1,7 +1,5 @@
 package top.ivan.windrop.clip;
 
-import top.ivan.windrop.util.ConvertUtil;
-
 import java.awt.datatransfer.Transferable;
 import java.io.IOException;
 

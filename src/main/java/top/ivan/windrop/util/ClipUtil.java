@@ -2,7 +2,6 @@ package top.ivan.windrop.util;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import top.ivan.windrop.bean.AccessUser;
 import top.ivan.windrop.clip.*;
 
 import java.awt.*;
@@ -10,13 +9,12 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+
+import static top.ivan.windrop.clip.ClipType.*;
 
 /**
  * @author Ivan
@@ -29,52 +27,58 @@ public class ClipUtil {
 
     private static final String DEFAULT_IMAGE_FORMAT = "png";
 
-    private static Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+    private static final ClipTypeSelector TYPE_SELECTOR = new ClipTypeSelector(Arrays.asList(F, I, S, U));
 
-    private static volatile ClipBean target;
+    private static final Clipboard CLIPBOARD = Toolkit.getDefaultToolkit().getSystemClipboard();
+
+    private static volatile ClipBean TARGET;
 
     public static synchronized ClipBean getClipBean() {
         try {
-            Transferable ts = clipboard.getContents(null);
+            Transferable ts = CLIPBOARD.getContents(null);
             Object origin;
-            if (ts.isDataFlavorSupported(DataFlavor.stringFlavor)) {
-                origin = ts.getTransferData(DataFlavor.stringFlavor);
-                if (!isOrigin(origin)) {
-                    target = new TextClipBean((String) origin, currentTimestamp());
-                }
-            } else if (ts.isDataFlavorSupported(DataFlavor.imageFlavor)) {
-                ImageData data = getImageData(ts);
-                origin = data.getOrigin();
-                String type = data.getType();
-
-                if (!isOrigin(origin)) {
-                    if (origin instanceof File) {
-                        target = new ImageFileClipBean((File) origin, currentTimestamp());
-                    } else {
-                        target = new ImageClipBean((BufferedImage) origin, type, currentTimestamp());
+            switch (TYPE_SELECTOR.select(ts)) {
+                case STRING:
+                    origin = ts.getTransferData(DataFlavor.stringFlavor);
+                    if (!isOrigin(origin)) {
+                        TARGET = new TextClipBean((String) origin, currentTimestamp());
                     }
-                }
-            } else if (ts.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                List<File> fileList = (List<File>) ts.getTransferData(DataFlavor.javaFileListFlavor);
-                origin = fileList.get(0);
-                if (!isOrigin(origin)) {
-                    target = new FileClipBean((File) origin, currentTimestamp());
-                }
+                    break;
+                case IMAGE:
+                    ImageData data = getImageData(ts);
+                    origin = data.getOrigin();
+                    String type = data.getType();
+
+                    if (!isOrigin(origin)) {
+                        if (origin instanceof File) {
+                            TARGET = new ImageFileClipBean((File) origin, currentTimestamp());
+                        } else {
+                            TARGET = new ImageClipBean((Image) origin, type, currentTimestamp());
+                        }
+                    }
+                    break;
+                case FILE:
+                    List<File> fileList = (List<File>) ts.getTransferData(DataFlavor.javaFileListFlavor);
+                    origin = fileList.get(0);
+                    if (!isOrigin(origin)) {
+                        TARGET = new FileClipBean((File) origin, currentTimestamp());
+                    }
+                    break;
             }
         } catch (Exception e) {
             throw new RuntimeException("can not get clipboard data", e);
         }
-        return target;
+        return TARGET;
     }
 
     public static synchronized void setClipboard(ClipBean bean) throws IOException {
-        target = bean;
-        clipboard.setContents(bean.toTransferable(), null);
+        TARGET = bean;
+        CLIPBOARD.setContents(bean.toTransferable(), null);
     }
 
     public static boolean isOrigin(Object obj) throws IOException {
-        if (target != null) {
-            return target.isOrigin(obj);
+        if (TARGET != null) {
+            return TARGET.isOrigin(obj);
         }
         return false;
     }
@@ -146,7 +150,7 @@ public class ClipUtil {
     }
 
     public static String getClipBeanType(ClipBean clipBean) {
-        if (clipBean instanceof FileClipBean) {
+        if (clipBean instanceof FileBean) {
             return "file";
         } else if (clipBean instanceof ImageClipBean) {
             return "image";

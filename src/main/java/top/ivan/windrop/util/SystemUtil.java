@@ -114,44 +114,52 @@ public class SystemUtil {
     }
 
     public static String getMotherboardSN() {
-        StringBuilder result = new StringBuilder();
-        try {
-            File file = File.createTempFile("realhowto", ".vbs");
-            file.deleteOnExit();
-            try (FileWriter fw = new java.io.FileWriter(file)) {
-                String vbs = "Set objWMIService = GetObject(\"winmgmts:\\\\.\\root\\cimv2\")\n"
-                        + "Set colItems = objWMIService.ExecQuery _ \n"
-                        + "   (\"Select * from Win32_BaseBoard\") \n"
-                        + "For Each objItem in colItems \n"
-                        + "   Wscript.Echo objItem.SerialNumber \n"
-                        + "    exit for  ' do the first cpu only! \n" + "Next \n";
+        if (isWindows()) {
+            StringBuilder result = new StringBuilder();
+            try {
+                File file = File.createTempFile("realhowto", ".vbs");
+                file.deleteOnExit();
+                try (FileWriter fw = new java.io.FileWriter(file)) {
+                    String vbs = "Set objWMIService = GetObject(\"winmgmts:\\\\.\\root\\cimv2\")\n"
+                            + "Set colItems = objWMIService.ExecQuery _ \n"
+                            + "   (\"Select * from Win32_BaseBoard\") \n"
+                            + "For Each objItem in colItems \n"
+                            + "   Wscript.Echo objItem.SerialNumber \n"
+                            + "    exit for  ' do the first cpu only! \n" + "Next \n";
 
-                fw.write(vbs);
+                    fw.write(vbs);
+                }
+                Process p = Runtime.getRuntime().exec(
+                        "cscript //NoLogo " + file.getPath());
+                BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                String line;
+                while ((line = input.readLine()) != null) {
+                    result.append(line);
+                }
+                input.close();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            Process p = Runtime.getRuntime().exec(
-                    "cscript //NoLogo " + file.getPath());
-            BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            String line;
-            while ((line = input.readLine()) != null) {
-                result.append(line);
-            }
-            input.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+            return result.toString().trim();
+        } else {
+            return "unknown";
         }
-        return result.toString().trim();
     }
 
     public static String getCpuSN() {
-        try {
-            Process process = Runtime.getRuntime().exec(new String[]{"C:\\Windows\\System32\\wbem\\WMIC.exe", "cpu", "get", "ProcessorId"});
-            process.getOutputStream().close();
-            Scanner sc = new Scanner(process.getInputStream());
-            sc.next();
-            return sc.next();
-        } catch (IOException e) {
-            log.error("get cpu sn error", e);
-            return "";
+        if (isWindows()) {
+            try {
+                Process process = Runtime.getRuntime().exec(new String[]{"C:\\Windows\\System32\\wbem\\WMIC.exe", "cpu", "get", "ProcessorId"});
+                process.getOutputStream().close();
+                Scanner sc = new Scanner(process.getInputStream());
+                sc.next();
+                return sc.next();
+            } catch (IOException e) {
+                log.error("get cpu sn error", e);
+                return "";
+            }
+        } else {
+            return "unknown";
         }
     }
 
@@ -175,5 +183,13 @@ public class SystemUtil {
         JFileChooser chooser = new JFileChooser();
         chooser.setVisible(false);
         return chooser.getFileSystemView().getDefaultDirectory().toString();
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows");
+    }
+
+    public static void main(String[] args) {
+        System.out.println(System.getProperty("os.name"));
     }
 }
