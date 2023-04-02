@@ -1,5 +1,6 @@
 package top.ivan.windrop.shortcut;
 
+import io.netty.resolver.DefaultAddressResolverGroup;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -61,7 +62,11 @@ public class ShortcutApiManager {
     }
 
     private Supplier<ShortcutApi> httpSuppler() {
-        HttpClient client = HttpClient.create().secure(SslProvider.defaultClientProvider());
+        HttpClient client = HttpClient.create()
+                //just access the website on browser if you have a proxy
+                //.proxy(your proxy)
+                .resolver(DefaultAddressResolverGroup.INSTANCE)
+                .secure(SslProvider.defaultClientProvider());
         String json = client.get().uri(apiUrl).responseContent().asString().collectList().map(l -> String.join("\n", l)).block();
         try {
             ShortcutApi api = JSONUtil.read(json, ShortcutApi.class);
