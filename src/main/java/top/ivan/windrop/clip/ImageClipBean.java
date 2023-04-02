@@ -25,12 +25,6 @@ public class ImageClipBean implements ClipBean {
     ImageClipBean() {
     }
 
-    public ImageClipBean(byte[] data, String format, long updateTime) throws IOException {
-        this.data = data;
-        this.format = format;
-        this.updateTime = updateTime;
-    }
-
     public ImageClipBean(Image image, String format, long updateTime) {
         this.image = image;
         this.format = format;
