@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
 @RequestMapping("/windrop")
 public class SwapController {
     private static final File TEMP_DIRECTORY_FILE;
-    private static final Pattern URL_PATTERN = Pattern.compile("(((http|ftp|https)://)(([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,6})|([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(:[0-9]{1,4})*)(/[a-zA-Z0-9&%_./-~-]*)?");
+    private static final Pattern URL_PATTERN = Pattern.compile("(((http|ftp|https)://)(([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,6})|([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(:[0-9]{1,4})*)(/[a-zA-Z0-9,=&%_./-~-]*)?");
     public static final String RES_TYPE_FILE = "文件";
     public static final String RES_TYPE_URL = "网址";
 
