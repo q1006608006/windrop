@@ -22,9 +22,8 @@ public class ValidService {
 
     public Mono<Boolean> valid(String group, String sign, String... patterns) {
         return WebHandler.ip().map(ip -> keyService.match(group, key -> {
-            if (log.isDebugEnabled()) {
-                //syntax for search
-                log.debug("val" + "id {}-{}-{}", group, ip, "[" + String.join(",", patterns) + "]");
+            if (log.isInfoEnabled()) {
+                log.info("val" + "id {}-{}-{}", group, ip, "[" + String.join(",", patterns) + "]");
             }
             String content = ConvertUtil.combines(";", key, ip, patterns);
             return Objects.equals(sign, DigestUtils.sha256Hex(content));

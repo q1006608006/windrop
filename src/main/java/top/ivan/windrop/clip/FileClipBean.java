@@ -24,7 +24,7 @@ public class FileClipBean implements ClipBean, FileBean {
     public synchronized byte[] getBytes() throws IOException {
         if (data == null) {
             if (src.isDirectory()) {
-                throw new UnsupportedOperationException("un support covert a directory to byte arrays, use covert2Zip() instead it");
+                throw new UnsupportedOperationException("Not support covert a directory to bytes");
             } else {
                 this.data = Files.readAllBytes(Paths.get(src.toURI()));
             }

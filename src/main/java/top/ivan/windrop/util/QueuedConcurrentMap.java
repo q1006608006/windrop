@@ -54,7 +54,7 @@ public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
         return doThenCheckFull(key, () -> super.compute(key, remappingFunction));
     }
 
-    public V doThenCheckFull(K key, Supplier<V> supplier) {
+    private V doThenCheckFull(K key, Supplier<V> supplier) {
         if (!containsKey(key)) {
             keyQueue.add(key);
         }

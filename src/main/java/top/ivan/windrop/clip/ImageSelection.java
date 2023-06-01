@@ -25,11 +25,11 @@ public class ImageSelection implements Transferable {
 
     @Override
     public boolean isDataFlavorSupported(DataFlavor flavor) {
-        return flavor == DataFlavor.imageFlavor;
+        return flavor.equals(DataFlavor.imageFlavor);
     }
 
     @Override
-    public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException, IOException {
+    public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
         if (isDataFlavorSupported(flavor)) {
             return image;
         }

@@ -26,6 +26,7 @@ import top.ivan.windrop.util.SystemUtil;
 import top.ivan.windrop.verify.WebHandler;
 
 import java.io.IOException;
+import java.util.Objects;
 
 /**
  * @author Ivan
@@ -65,7 +66,7 @@ public class ConnectController {
     public Mono<ConnectResponse> connect(@RequestBody Mono<ConnectRequest> mono) {
         return valid(mono).flatMap(request ->
                 WebHandler.request()
-                        .map(req -> req.getRemoteAddress().getAddress().getHostAddress())
+                        .map(req -> Objects.requireNonNull(req.getRemoteAddress()).getAddress().getHostAddress())
                         .flatMap(host -> {
                             // 连接参数
                             ConnectQrProperties.Option option = connectHandler.getOption(request.getData());
@@ -97,7 +98,8 @@ public class ConnectController {
             // 验证设备有效性(sha256(wifi名称,设备ID,randomKey,核验密钥))
             return validService.valid(WinDropConfiguration.CONNECT_GROUP, req.getSign(), req.getLocate(), req.getDeviceId())
                     .flatMap(success -> Boolean.TRUE.equals(success)
-                            ? Mono.just(req) : Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，认证码过期或已被使用"))
+                            ? Mono.just(req) :
+                            WebHandler.ip().flatMap(ip -> Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "认证失败")))
                     );
         });
     }
