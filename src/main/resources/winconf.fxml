@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<TabPane
+        fx:controller="test.JSwingTest$FxController"
+        maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0"
+        prefWidth="600.0" tabClosingPolicy="UNAVAILABLE" xmlns:fx="http://javafx.com/fxml">
+    <tabs>
+        <Tab text="通用">
+            <content>
+                <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+                    <children>
+                        <Label fx:id="openLabel"
+                               layoutX="93.0" layoutY="60.0" text="自动打开："/>
+                        <CheckBox fx:id="cbFile"
+                                  layoutX="221.0" layoutY="60.0" mnemonicParsing="false" text="文件（图片）"/>
+                        <CheckBox fx:id="cbUrl"
+                                  layoutX="349.0" layoutY="60.0" mnemonicParsing="false" text="URL链接"/>
+                        <Label layoutX="93.0" layoutY="105.0" text="上传前确认："/>
+                        <CheckBox layoutX="222.0" layoutY="105.0" mnemonicParsing="false" text="文件"/>
+                        <CheckBox layoutX="349.0" layoutY="105.0" mnemonicParsing="false" text="图片"/>
+                        <Label layoutX="93.0" layoutY="152.0" text="系统通知："/>
+                        <CheckBox layoutX="222.0" layoutY="152.0" mnemonicParsing="false" text="文件"/>
+                        <CheckBox layoutX="349.0" layoutY="152.0" mnemonicParsing="false" text="图片"/>
+                        <CheckBox layoutX="477.0" layoutY="152.0" mnemonicParsing="false" text="文本"/>
+                        <TextField layoutX="220.0" layoutY="197.0" prefHeight="26.0" prefWidth="308.0"/>
+                        <Label layoutX="93.0" layoutY="201.0" text="快捷指令URL："/>
+                        <Label layoutX="93.0" layoutY="247.0"/>
+                        <Button layoutX="380.0" layoutY="330.0" mnemonicParsing="false" text="确定"/>
+                        <Button onAction="#onApply"
+                                layoutX="454.0" layoutY="330.0" mnemonicParsing="false" text="应用"/>
+                        <Button layoutX="526.0" layoutY="330.0" mnemonicParsing="false" text="取消"/>
+                    </children>
+                </AnchorPane>
+            </content>
+        </Tab>
+        <Tab text="白名单">
+            <content>
+                <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+                    <children>
+                        <TextArea layoutX="38.0" layoutY="58.0" prefHeight="236.0" prefWidth="525.0"/>
+                        <Label layoutX="38.0" layoutY="27.0" text="IP白名单："/>
+                        <Button layoutX="380.0" layoutY="330.0" mnemonicParsing="false" text="确定"/>
+                        <Button layoutX="454.0" layoutY="330.0" mnemonicParsing="false" text="应用"/>
+                        <Button layoutX="526.0" layoutY="330.0" mnemonicParsing="false" text="取消"/>
+                    </children>
+                </AnchorPane>
+            </content>
+        </Tab>
+    </tabs>
+</TabPane>

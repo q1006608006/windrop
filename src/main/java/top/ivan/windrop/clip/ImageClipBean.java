@@ -1,7 +1,6 @@
 package top.ivan.windrop.clip;
 
 import net.coobird.thumbnailator.Thumbnails;
-import sun.awt.image.MultiResolutionCachedImage;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -10,7 +9,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.List;
 
 public class ImageClipBean implements ClipBean {
 
@@ -44,12 +42,7 @@ public class ImageClipBean implements ClipBean {
         if (img instanceof BufferedImage) {
             return (BufferedImage) img;
         }
-        if (img instanceof MultiResolutionCachedImage) {
-            List<Image> ims = ((MultiResolutionCachedImage) img).getResolutionVariants();
-            if (!ims.isEmpty() && ims.get(0) instanceof BufferedImage) {
-                return (BufferedImage) ims.get(0);
-            }
-        }
+
         BufferedImage buffered = new BufferedImage(img.getWidth(null), img.getHeight(null), BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = buffered.createGraphics();
         g.drawImage(img, 0, 0, null);

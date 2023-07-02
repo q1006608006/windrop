@@ -72,7 +72,7 @@ public class WinDropApplication {
         }
     }
 
-    public static void openBrowse(String url) {
+    public static void openInBrowse(String url) {
         try {
             Desktop.getDesktop().browse(new URI(url));
         } catch (IOException e) {

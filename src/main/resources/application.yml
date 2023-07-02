@@ -9,9 +9,9 @@ server:
 spring:
   servlet:
     multipart:
-      max-request-size: 29MB
+      max-request-size: 100MB
   codec:
-    max-in-memory-size: 50MB
+    max-in-memory-size: 100MB
   thymeleaf:
     cache: false
 

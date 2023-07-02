@@ -62,6 +62,10 @@ function showMsg(msg) {
     $('#alertMsg').text(msg);
 }
 
+function hideAlert() {
+    $('#alertDiv').removeClass("show")
+}
+
 // 当input标签文件被置换
 $('#customFile').on('change', function () {
     let file = this.files[0];
@@ -75,7 +79,7 @@ $('#customFile').on('change', function () {
         $("#fileMd5").text(md5);
     })
     // 恢复提交按钮
-    // $('button[type=submit]').prop('disabled', false);
+    $('button[type=submit]').prop('disabled', false);
 });
 // 重选文件，重选按钮被点击后执行
 $('.reset').click(function () {
@@ -86,7 +90,8 @@ $('.reset').click(function () {
     $("#customFile").val('');
 
     // 恢复提交按钮
-    // $('button[type=submit]').prop('disabled', false);
+    $('button[type=submit]').prop('disabled', false)
+    hideAlert();
 });
 // 提交按钮被点击后执行
 $("#uploadFileBtn").click(function (e) {
@@ -95,7 +100,7 @@ $("#uploadFileBtn").click(function (e) {
     // 获取文件
     var file = $('#customFile')[0].files[0];
     // 判断是否选择文件
-    if(undefined === file) {
+    if (undefined === file) {
         showMsg("请选择文件")
         return;
     }
@@ -153,3 +158,5 @@ $("#uploadFileBtn").click(function (e) {
         });
     return false;
 });
+
+$("#alert-button").click(hideAlert);

@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * @date 2021/3/10
  */
 @Slf4j
-public class PersistUserService {
+public class PersistUserService implements UserService {
     private final WatchedFile fileHandler;
 
     private Map<String, AccessUser> userMap;
@@ -33,14 +33,17 @@ public class PersistUserService {
         fileHandler = new WatchedFile(userDataFilePath);
     }
 
+    @Override
     public AccessUser findUser(String id) throws IOException {
         return takeUserMap().get(id);
     }
 
+    @Override
     public List<AccessUser> findByAlias(String alias) throws IOException {
         return takeUserMap().values().stream().filter(u -> Objects.equals(alias, u.getAlias())).collect(Collectors.toList());
     }
 
+    @Override
     public AccessUser newUser(String id, String name, String validKey, int maxSecond) throws IOException {
         AccessUser accessUser = new AccessUser();
         accessUser.setId(id);
@@ -57,6 +60,7 @@ public class PersistUserService {
         return accessUser;
     }
 
+    @Override
     public void updateUser(AccessUser user) throws IOException {
         if (null != user && findUser(user.getId()) != null) {
             takeUserMap().put(user.getId(), user);
@@ -64,6 +68,7 @@ public class PersistUserService {
         }
     }
 
+    @Override
     public void updateAccessTime(String id) throws IOException {
         AccessUser user = findUser(id);
         if (null != user) {
@@ -72,11 +77,13 @@ public class PersistUserService {
         }
     }
 
+    @Override
     public void deleteUser(String id) throws IOException {
         takeUserMap().remove(id);
         saveUserMap();
     }
 
+    @Override
     public void deleteAll() throws IOException {
         userMap = new ConcurrentHashMap<>();
         saveUserMap();

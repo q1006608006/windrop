@@ -21,36 +21,22 @@ import java.util.List;
 @ConfigurationProperties(prefix = "windrop")
 @PropertySource("classpath:config.properties")
 public class WindropConfig {
-    private static final List<String> operatorList = Arrays.asList("pull", "text", "file", "image");
 
     private int port;
     private long maxFileLength;
     private long textFileLimit;
     private String encoding;
-    private List<String> notify;
-    private List<String> confirm;
     private List<String> networkInterfaces;
     private String shortcutApi = "shortcut.json";
-    private String open = "false";
 
     public boolean needNotify(String type, boolean isPush) {
-        if (null == notify || notify.isEmpty()) {
-            return false;
-        }
-        String iType = type.toLowerCase();
-        return notify.stream().map(s -> s.toLowerCase().trim()).anyMatch(s ->
-                s.equals("*") || s.equals(iType) || s.equals(isPush ? "push.*" : "pull.*") || s.equals((isPush ? "push." : "pull.") + iType)
-        );
+        return true; //todo
     }
 
     public boolean needConfirm(String type, boolean push) {
-        String iType = type.toLowerCase();
-        return null == confirm || confirm.isEmpty() ||
-                confirm.stream().map(s -> s.toLowerCase().trim()).anyMatch(s ->
-                        s.equals("*") || s.equals(iType) || s.equals(push ? "push.*" : "pull.*") || s.equals((push ? "push." : "pull.") + iType)
-                )
-                || !operatorList.contains(iType);
+        return true; //todo
     }
+
 
     public Charset getCharset() {
         return StringUtils.hasLength(encoding) ? Charset.forName(encoding) : StandardCharsets.UTF_8;

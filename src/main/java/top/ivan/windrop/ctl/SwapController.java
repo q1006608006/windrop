@@ -25,6 +25,7 @@ import top.ivan.windrop.ex.LengthTooLargeException;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.ResourceSharedService;
 import top.ivan.windrop.svc.ValidService;
+import top.ivan.windrop.svc.WindropManageService;
 import top.ivan.windrop.util.*;
 import top.ivan.windrop.verify.VerifyIP;
 import top.ivan.windrop.verify.WebHandler;
@@ -47,7 +48,7 @@ import java.util.regex.Pattern;
 @RequestMapping("/windrop")
 public class SwapController {
     private static final File TEMP_DIRECTORY_FILE;
-    private static final Pattern URL_PATTERN = Pattern.compile("(((http|ftp|https)://)(([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,6})|([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(:[0-9]{1,4})*)(/[a-zA-Z0-9,=&%_./-~-]*)?");
+    private static final Pattern URL_PATTERN = Pattern.compile("(((http|ftp|https)://)(([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,6})|([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(:[0-9]{1,4})*)(/[a-zA-Z0-9,=&%_./-~-#]*)?");
     public static final String RES_TYPE_FILE = "文件";
     public static final String RES_TYPE_URL = "网址";
 
@@ -110,70 +111,55 @@ public class SwapController {
         }
     }
 
+    @Autowired
+    private WindropManageService manageService;
+
     /**
      * 申请校验码
      *
-     * @param mono 推送数据{@link ApplyRequest}
+     * @param request 推送数据{@link ApplyRequest}
      * @return 随机访问密钥 {@link ApplyResponse}
      */
     @PostMapping("apply")
     @VerifyIP
-    public Mono<ApplyResponse> apply(@RequestBody Mono<ApplyRequest> mono) {
-        return mono.flatMap(request -> {
-            // 判断请求类型
-            boolean isPush = !"pull".equalsIgnoreCase(request.getType());
-            // 判断申请的资源类型
-            String itemType = isPush ? request.getType() : ClipUtil.getClipBeanType(ClipUtil.getClipBean());
-
-            AccessUser user = prepareUser(request.getId());
-
-            return WebHandler.ip()
-                    // PC上确认是否接收
-                    .doOnNext(ip -> confirm(user, request, ip, itemType, isPush))
-                    // 返回随机密钥,用于签名
-                    .map(v -> ApplyResponse.success(validService.getValidKey(getSwapGroupKey(itemType, user, isPush), 90)));
-        });
+    public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request) {
+        return manageService.prepareValidKey(request)// todo
+                .map(ApplyResponse::success);
     }
 
     /**
-     * 远端推送请求
+     * 服务端接收内容，写入剪贴板
      *
-     * @param mono 推送数据{@link WindropRequest}
+     * @param request 数据{@link WindropRequest}
      * @return 更新结果
      */
     @PostMapping("push")
     @VerifyIP
-    public Mono<CommonResponse> setClipboard(@RequestBody Mono<WindropRequest> mono) {
-        return mono.flatMap(request -> {
-            // 校验data
-            byte[] data;
-            if (null == request.getData()) {
-                log.error("request without 'data'");
-                throw new HttpClientException(HttpStatus.BAD_REQUEST, "异常请求");
-            } else {
-                // 使用base64解码
-                data = ConvertUtil.decodeBase64(request.getData());
-            }
+    public Mono<CommonResponse> accept(@RequestBody WindropRequest request) {
+        // 校验data
+        if (null == request.getData()) {
+            log.error("request without 'data'");
+            return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "异常请求"));
+        }
 
-            // 获取用户（设备）信息
-            AccessUser user = prepareUser(request.getId());
-
-            // 验证签名
-            return validPushRequest(user, request, data)
-                    // 更新剪贴板内容
-                    .map(r -> set2Clipboard(request, data, user))
-                    .flatMap(this::tryOpen)
-                    .flatMap(bean ->
-                            // 返回成功结果
-                            Mono.just(CommonResponse.success("更新成功"))
-                                    // 调用系统通知
-                                    .doOnSuccess(rsp -> systemNotify(request.getType(), user, bean, true))
-                    );
-        });
+        return Mono.fromSupplier(() -> ConvertUtil.decodeBase64(request.getData()))
+                // 校验用户请求
+                .flatMap(data -> manageService.validPushForUser(request, data)
+                        // 更新剪贴板内容
+                        .zipWhen(user -> Mono.just(set2Clipboard(request, data, user))
+                                        .flatMap(bean -> Mono.just(CommonResponse.success("更新成功"))
+                                                // 调用系统通知
+                                                .doFinally(s -> {
+                                                    if (SignalType.ON_COMPLETE == s) {
+                                                        systemNotify(request.getType(), user, bean, true);
+                                                        tryOpen(bean, request.getType());
+                                                    }
+                                                }))
+                                , (ig, rsp) -> rsp));
     }
 
     /**
-     * 远端拉取请求
+     * 请求服务端剪贴板
      *
      * @param mono 拉取请求数据{@link WindropRequest}
      * @return 本地剪切板内容或大文件resourceId
@@ -573,8 +559,10 @@ public class SwapController {
         } else {
             switch (itemType) {
                 case "file":
+                    msg = "是否接收来自[" + user.getAlias() + "]的文件: " + shortName(request.getFilename(), -50) + "（" + request.getSize() + ")?";
+                    break;
                 case "image":
-                    msg = "是否接收来自[" + user.getAlias() + "]的文件/图片: " + request.getFilename() + "（" + request.getSize() + ")?";
+                    msg = "是否接收来自[" + user.getAlias() + "]的图片: " + shortName(request.getFilename(), -50) + "（" + request.getSize() + ")?";
                     break;
                 case "text":
                     msg = "是否接收来自[" + user.getAlias() + "]的文本?";
@@ -593,13 +581,7 @@ public class SwapController {
         }
     }
 
-    private Mono<ClipBean> tryOpen(ClipBean bean) {
-        Mono<ClipBean> rs = Mono.just(bean);
-
-        if ("false".equals(config.getOpen())) {
-            return rs;
-        }
-
+    private void tryOpen(ClipBean bean, String type) {
         String resName;
         String resType;
         if (bean instanceof FileBean) {
@@ -611,28 +593,19 @@ public class SwapController {
                 resName = txt;
                 resType = RES_TYPE_URL;
             } else {
-                return rs;
+                return;
             }
         } else {
-            return rs;
+            return;
         }
 
-        return WebHandler.ip().flatMap(ip -> {
-            if ("force".equals(config.getOpen()) || WinDropApplication.confirm(ip, "是否打开" + resType + ": " + resName + "?")) {
-                return rs.doFinally(s -> {
-                    if (SignalType.ON_COMPLETE == s) {
-                        if (RES_TYPE_FILE.equals(resType)) {
-                            WinDropApplication.open(((FileBean) bean).getFile());
-                        } else {
-                            WinDropApplication.openBrowse(resName);
-                        }
-                    }
-                });
+        if (WinDropApplication.confirm("ip", "是否打开" + type + ": " + shortName(resName, resType.equals(RES_TYPE_URL) ? 50 : -50) + "?")) {
+            if (RES_TYPE_FILE.equals(resType)) {
+                WinDropApplication.open(((FileBean) bean).getFile());
             } else {
-                return rs;
+                WinDropApplication.openInBrowse(resName);
             }
-        });
-
+        }
     }
 
     /**
@@ -669,6 +642,17 @@ public class SwapController {
             return file.getName() + ".zip";
         }
         return file.getName().replaceAll("(.*)(\\..*)?", "$1.zip");
+    }
+
+    private static String shortName(String name, int limit) {
+        int len = name.length() + limit;
+        if (len > name.length() && limit < name.length()) {
+            return name.substring(0, limit) + "...";
+        } else if (len < name.length() && len > 0) {
+            return name.substring(len) + "...";
+        } else {
+            return name;
+        }
     }
 
     private static class InitialResourceWrapper extends InitialResource {
