@@ -39,29 +39,32 @@ public class WindropManageService {
     @Autowired
     private ValidService validService;
 
-    public Mono<String> prepareValidKey(ApplyRequest req) {
+    public Mono<String> checkForKey(ApplyRequest req, AccessUser user) {
         boolean isPull = OPERATE_PULL.equalsIgnoreCase(req.getType());
         // 判断申请的资源类型
         String itemType = isPull ? ClipUtil.getClipBeanType(ClipUtil.getClipBean()) : req.getType();
 
-        return prepareUser(req.getId())
-                .zipWith(WebHandler.ip(), (user, ip) -> confirm(user, req, ip, itemType, isPull))
+        return WebHandler.ip()
+                .flatMap(ip -> confirm(user, req, ip, itemType, isPull))
                 .then(Mono.just(validService.getValidKey(getSwapGroupKey(itemType, req.getId(), isPull), 90)));
     }
 
     public Mono<AccessUser> validPushForUser(WindropRequest req, byte[] data) {
         String group = getSwapGroupKey(req.getType(), req.getId(), false);
-        return prepareUser(req.getId())
-                .filterWhen(user -> Mono.fromSupplier(() -> DigestUtils.sha256Hex(data))
-                        .flatMap(hex -> validService.valid(group, req.getSign(), user.getValidKey(), hex)))
-                .switchIfEmpty(Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆")));
+        return prepareUser(req.getId()).filterWhen(user ->
+                        Mono.fromSupplier(() -> DigestUtils.sha256Hex(data))
+                                .flatMap(hex -> validService.valid(group, req.getSign(), user.getValidKey(), hex))
+                ).switchIfEmpty(Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新登陆")))
+                .flatMap(user ->
+                        Mono.just(user).contextWrite(ctx -> ctx.put(AccessUser.class, user))
+                );
     }
 
-    public Mono<Void> handler() {
+    public Mono<Void> afterSetClipboard() {
         return Mono.empty();
     }
 
-    private Mono<AccessUser> prepareUser(String id) {
+    public Mono<AccessUser> prepareUser(String id) {
         return Mono.defer(() -> {
             try {
                 return Mono.justOrEmpty(userService.findUser(id))
@@ -73,6 +76,48 @@ public class WindropManageService {
             }
         });
     }
+
+    public AccessUser prepareUser2(String id) throws IOException {
+        return userService.findUser(id);
+    }
+
+    private boolean confirm2(AccessUser user, ApplyRequest request, String ip, String itemType, boolean isPull) {
+        // 无需弹窗确认则直接返回
+        if (!needConfirm(itemType, isPull)) {
+            return true;
+        }
+        String msg;
+        if (isPull) {
+            ClipBean bean = ClipUtil.getClipBean();
+            String itemName;
+            if (bean instanceof FileBean) {
+                itemName = ((FileBean) bean).getFileName();
+            } else {
+                itemName = ClipUtil.getClipBeanTypeName(bean);
+            }
+            msg = "是否推送'" + itemName + "'到[" + user.getAlias() + "]?";
+        } else {
+            switch (itemType) {
+                case "file":
+                    msg = "是否接收来自[" + user.getAlias() + "]的文件: " + shortName(request.getFilename(), -50) + "（" + request.getSize() + ")?";
+                    break;
+                case "image":
+                    msg = "是否接收来自[" + user.getAlias() + "]的图片: " + shortName(request.getFilename(), -50) + "（" + request.getSize() + ")?";
+                    break;
+                case "text":
+                    msg = "是否接收来自[" + user.getAlias() + "]的文本?";
+                    break;
+                default:
+                    msg = "未定义请求: " + JSONUtil.toString(request);
+                    break;
+            }
+        }
+
+        // 弹窗确认
+        // 点击取消则拒绝此处请求
+        return WinDropApplication.confirm("来自" + ip, msg);
+    }
+
 
     private Mono<Void> confirm(AccessUser user, ApplyRequest request, String ip, String itemType, boolean isPull) {
         // 无需弹窗确认则直接返回

@@ -123,7 +123,9 @@ public class SwapController {
     @PostMapping("apply")
     @VerifyIP
     public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request) {
-        return manageService.prepareValidKey(request)// todo
+
+        return manageService.prepareUser(request.getId())
+                .flatMap(user -> manageService.checkForKey(request, user))
                 .map(ApplyResponse::success);
     }
 
@@ -142,7 +144,18 @@ public class SwapController {
             return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "异常请求"));
         }
 
-        return Mono.fromSupplier(() -> ConvertUtil.decodeBase64(request.getData()))
+        byte[] data = ConvertUtil.decodeBase64(request.getData());
+        return manageService.validPushForUser(request, data)
+                .flatMap(user -> set2Clipboard2(request, data, user)
+                        .flatMap(bean -> Mono.just(CommonResponse.success("更新成功"))
+                                .doFinally(s -> {
+                                    if (SignalType.ON_COMPLETE == s) {
+                                        systemNotify(request.getType(), user, bean, true);
+                                        tryOpen(bean, request.getType());
+                                    }
+                                })));
+
+/*        return Mono.fromSupplier(() -> ConvertUtil.decodeBase64(request.getData()))
                 // 校验用户请求
                 .flatMap(data -> manageService.validPushForUser(request, data)
                         // 更新剪贴板内容
@@ -155,7 +168,7 @@ public class SwapController {
                                                         tryOpen(bean, request.getType());
                                                     }
                                                 }))
-                                , (ig, rsp) -> rsp));
+                                , (ig, rsp) -> rsp));*/
     }
 
     /**
@@ -169,7 +182,7 @@ public class SwapController {
     public Mono<WindropResponse> getClipboard(@RequestBody Mono<WindropRequest> mono) {
         return mono.flatMap(request -> {
             // 用户（设备）信息
-            AccessUser user = prepareUser(request.getId());
+            AccessUser user = prepareUser3(request.getId());
 
             // 获取剪贴板信息
             ClipBean clipBean = ClipUtil.getClipBean();
@@ -218,7 +231,7 @@ public class SwapController {
      * @param id 用户ID
      * @return 用户信息
      */
-    private AccessUser prepareUser(String id) {
+    private AccessUser prepareUser3(String id) {
         try {
             AccessUser user = userService.findUser(id);
             if (null == user) {
@@ -232,6 +245,18 @@ public class SwapController {
             log.error("加载用户数据失败", e);
             throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常");
         }
+    }
+
+    private Mono<AccessUser> prepareUser(String id) {
+        return Mono.defer(() -> {
+            try {
+                return Mono.justOrEmpty(manageService.prepareUser2(id))
+                        .switchIfEmpty(Mono.error(() -> new HttpClientException(HttpStatus.UNAUTHORIZED, "未验证过的设备(id: " + id + ")")));
+            } catch (Exception e) {
+                log.error("加载用户数据失败", e);
+                return Mono.error(new HttpServerException("无法加载用户数据"));
+            }
+        });
     }
 
     /**
@@ -267,6 +292,11 @@ public class SwapController {
             log.error("更新剪贴板失败", e);
             throw new HttpClientException(HttpStatus.BAD_REQUEST, "服务异常");
         }
+    }
+
+
+    private Mono<ClipBean> set2Clipboard2(WindropRequest request, byte[] data, AccessUser user) {
+        return Mono.just(set2Clipboard(request, data, user));
     }
 
     /**
