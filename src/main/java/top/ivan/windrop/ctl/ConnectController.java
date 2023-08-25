@@ -59,49 +59,44 @@ public class ConnectController {
     /**
      * 与windrop创建连接或更新连接
      *
-     * @param mono 连接请求
+     * @param request 连接请求
      * @return 连接windrop的id和validKey
      */
     @PostMapping("connect")
-    public Mono<ConnectResponse> connect(@RequestBody Mono<ConnectRequest> mono) {
-        return valid(mono).flatMap(request ->
-                WebHandler.request()
-                        .map(req -> Objects.requireNonNull(req.getRemoteAddress()).getAddress().getHostAddress())
-                        .flatMap(host -> {
-                            // 连接参数
-                            ConnectQrProperties.Option option = connectHandler.getOption(request.getData());
-                            // 弹窗确认是否同意连接
-                            if (!confirm(option, request, host)) {
-                                return Mono.just(failure("拒绝连接"));
-                            } else {
-                                connectHandler.reset();
-                                return createUser(option, request);
-                            }
-                        })
-        );
+    public Mono<ConnectResponse> connect(@RequestBody ConnectRequest request) {
+        return valid(request)
+                .then(Mono.fromSupplier(() -> connectHandler.getOption(request.getData())))
+                .flatMap(opt -> confirm(opt, request).flatMap(pass -> pass
+                        ? createUser(opt, request).doOnNext(r -> connectHandler.reset())
+                        : Mono.just(failure("拒绝连接"))
+                ));
     }
 
     /**
      * 核验请求
      *
-     * @param mono 连接请求
+     * @param req 连接请求
      * @return 连接请求
      */
-    private Mono<ConnectRequest> valid(Mono<ConnectRequest> mono) {
-        return mono.flatMap(req -> {
-            // 校验参数
-            if (!StringUtils.hasLength(req.getDeviceId())
-                    || !StringUtils.hasLength(req.getSign())
-                    || !StringUtils.hasLength(req.getData())) {
-                return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "bad request"));
-            }
-            // 验证设备有效性(sha256(wifi名称,设备ID,randomKey,核验密钥))
-            return validService.valid(WinDropConfiguration.CONNECT_GROUP, req.getSign(), req.getLocate(), req.getDeviceId())
-                    .flatMap(success -> Boolean.TRUE.equals(success)
-                            ? Mono.just(req) :
-                            WebHandler.ip().flatMap(ip -> Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "认证失败")))
-                    );
-        });
+    private Mono<Void> valid(ConnectRequest req) {
+        // 校验参数
+        if (!StringUtils.hasLength(req.getDeviceId())
+                || !StringUtils.hasLength(req.getSign())
+                || !StringUtils.hasLength(req.getData())) {
+            return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "bad request"));
+        }
+        // 验证设备有效性(sha256(IP,wifi名称,设备ID,randomKey,核验密钥))
+        return WebHandler.ip().flatMap(ip ->
+                Mono.just(validService.validSign(
+                        WinDropConfiguration.CONNECT_GROUP
+                        , req.getSign()
+                        , ip
+                        , req.getLocate()
+                        , req.getDeviceId()
+                )).flatMap(pass -> pass
+                        ? Mono.empty()
+                        : Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "认证失败"))
+                ));
     }
 
     /**
@@ -120,15 +115,16 @@ public class ConnectController {
         String uid = generateId(request.getDeviceId(), request.getLocate());
         String validKey = IDUtil.get32UUID();
         String realPwd = DigestUtils.sha256Hex(ConvertUtil.combines(";", validKey, token));
-        return Mono.fromSupplier(() -> {
+
+        return Mono.defer(() -> {
             try {
-                return userService.newUser(uid, request.getDeviceId(), realPwd, maxAccess);
+                return Mono.just(userService.newUser(uid, request.getDeviceId(), realPwd, maxAccess));
             } catch (IOException e) {
                 log.error("create new user failed", e);
-                throw new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常");
+                return Mono.error(new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "数据服务异常"));
             } catch (Exception e) {
                 log.error("init user failed with option: " + option, e);
-                throw new HttpClientException(HttpStatus.BAD_REQUEST, "用户服务异常");
+                return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "用户服务异常"));
             }
         }).map(user -> {
             log.info("accept new connector for {}[{}]", user.getAlias(), user.getId());
@@ -141,10 +137,9 @@ public class ConnectController {
      *
      * @param opt     配置信息
      * @param request 连接请求
-     * @param host    请求IP地址
      * @return 确认结果
      */
-    private boolean confirm(ConnectQrProperties.Option opt, ConnectRequest request, String host) {
+    private Mono<Boolean> confirm(ConnectQrProperties.Option opt, ConnectRequest request) {
         int maxAccess = opt.getMaxAccess();
         String accessTime;
         if (maxAccess < 0) {
@@ -158,7 +153,9 @@ public class ConnectController {
         } else {
             accessTime = maxAccess / (3600 * 24) + "天";
         }
-        return WinDropApplication.confirm("新连接", "是否允许" + request.getDeviceId() + "(" + host + ")连接windrop[" + accessTime + "]?");
+        return WebHandler.request()
+                .map(webReq -> Objects.requireNonNull(webReq.getRemoteAddress()).getAddress().getHostAddress())
+                .map(host -> WinDropApplication.confirm("新连接", "是否允许" + request.getDeviceId() + "(" + host + ")连接windrop[" + accessTime + "]?"));
     }
 
     /**
@@ -193,7 +190,7 @@ public class ConnectController {
      * 生成用户id（非随机）
      *
      * @param deviceId 设备名称
-     * @param locate   一般为wifi名称+下划线+网端 （如: mywifi_192.168.0）
+     * @param locate   一般为wifi名称+下划线+网段 （如: mywifi_192.168.0）
      * @return ID
      */
     private String generateId(String deviceId, String locate) {

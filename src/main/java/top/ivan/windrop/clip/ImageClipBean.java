@@ -1,6 +1,7 @@
 package top.ivan.windrop.clip;
 
 import net.coobird.thumbnailator.Thumbnails;
+import org.springframework.lang.NonNull;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -23,7 +24,7 @@ public class ImageClipBean implements ClipBean {
     ImageClipBean() {
     }
 
-    public ImageClipBean(Image image, String format, long updateTime) {
+    public ImageClipBean(@NonNull Image image, String format, long updateTime) {
         this.image = image;
         this.format = format;
         this.updateTime = updateTime;
@@ -73,9 +74,6 @@ public class ImageClipBean implements ClipBean {
     }
 
     public Image getImage() throws IOException {
-        if (image == null) {
-            this.image = ImageIO.read(new ByteArrayInputStream(data));
-        }
         return image;
     }
 

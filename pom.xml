@@ -109,6 +109,12 @@
             <version>0.4.0</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>3.29.2-GA</version>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -7,10 +7,12 @@ import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
+import top.ivan.windrop.clip.FileClipBean;
 import top.ivan.windrop.ex.BadEncryptException;
 
 import javax.crypto.*;
@@ -20,26 +22,27 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.util.EnumMap;
+import java.util.concurrent.Executor;
 
 /**
  * @author Ivan
  * @description
  * @date 2020/12/17
  */
+@Slf4j
 public class ConvertUtil {
     private static final IvParameterSpec SEC_IV;
 
     static {
         byte[] sys = DigestUtils.md5(SystemUtil.getSystemKey());
         byte[] iv = new byte[16];
-        System.arraycopy(sys,0,iv,0,16);
+        System.arraycopy(sys, 0, iv, 0, 16);
         SEC_IV = new IvParameterSpec(iv);
     }
 
@@ -173,26 +176,27 @@ public class ConvertUtil {
     }
 
     public static String combines(String delimiter, Object... patterns) {
+        return combines(false, delimiter, patterns);
+    }
+
+    public static String combines(boolean ignoreNull, String delimiter, Object... patterns) {
         if (null == patterns) {
             return "";
         }
         StringBuilder bd = new StringBuilder();
-        boolean deleteLast = false;
         for (Object pat : patterns) {
             if (pat instanceof Object[]) {
-                bd.append(combines(delimiter, (Object[]) pat));
-                deleteLast = false;
+                bd.append(combines(ignoreNull, delimiter, (Object[]) pat));
             } else if (null != pat) {
-                bd.append(pat).append(delimiter);
-                deleteLast = true;
+                bd.append(pat);
+            } else if (ignoreNull) {
+                continue;
             } else {
-                bd.append(delimiter);
-                deleteLast = false;
+                bd.append("null");
             }
+            bd.append(delimiter);
         }
-        if (deleteLast) {
-            bd.deleteCharAt(bd.length() - 1);
-        }
+        bd.deleteCharAt(bd.length() - 1);
         return bd.toString();
     }
 
@@ -205,4 +209,54 @@ public class ConvertUtil {
         }
         return src;
     }
+
+    public static File covertDir2Zip(File src, String path, InitialResourceWrapper wrapper, Executor asyncExecutor) {
+        File file = new File(path);
+        if (file.isDirectory()) {
+            file = new File(file, src.getName() + ".zip");
+        }
+
+        File fin = file;
+        Runnable run = () -> {
+            boolean failed = false;
+            if (!fin.exists()) {
+                try {
+                    ZipUtil.nioZip(src, fin);
+                } catch (IOException e) {
+                    failed = true;
+                    log.error("zip file failed", e);
+                }
+            }
+            log.info("zip '{}' finished", fin);
+            if (!failed && wrapper != null) {
+                wrapper.complete(fin);
+            }
+        };
+        if (null == asyncExecutor) {
+            run.run();
+        } else {
+            asyncExecutor.execute(run);
+        }
+
+        return fin;
+    }
+
+    public static String shortName(String name, int limit) {
+        int len = name.length() + limit;
+        if (len > name.length() && limit < name.length()) {
+            return name.substring(0, limit) + "...";
+        } else if (len < name.length() && len > 0) {
+            return name.substring(len) + "...";
+        } else {
+            return name;
+        }
+    }
+
+    public static String getZipName(File file) {
+        if (file.isDirectory()) {
+            return file.getName() + ".zip";
+        }
+        return file.getName().replaceAll("(.*)(\\..*)?", "$1.zip");
+    }
+
 }

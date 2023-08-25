@@ -210,10 +210,17 @@ public class FileSwapController {
      */
     private Mono<Boolean> valid(String sign, AccessUser user) {
         String group = prepareKey(user.getId(), FILE_UPLOAD_APPLY_GROUP);
-        return validService.valid(group, sign, user.getValidKey())
-                .flatMap(success -> Boolean.TRUE.equals(success) ?
-                        Mono.just(true) : Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新验证"))
+        return WebHandler.ip()
+                .map(ip -> validService.validSign(
+                        group
+                        , sign
+                        , ip
+                        , user.getValidKey()
+                )).flatMap(pass -> pass
+                        ? Mono.just(true)
+                        : Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "核验失败，请重新验证"))
                 );
+
     }
 
     /**

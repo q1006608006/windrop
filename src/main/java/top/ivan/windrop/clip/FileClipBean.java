@@ -20,6 +20,10 @@ public class FileClipBean implements ClipBean, FileBean {
         this.updateTime = updateTime;
     }
 
+    public FileClipBean(File file) {
+        this(file, file.lastModified());
+    }
+
     @Override
     public synchronized byte[] getBytes() throws IOException {
         if (data == null) {
