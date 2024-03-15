@@ -1,6 +1,8 @@
 package top.ivan.windrop.bean;
 
 import lombok.Data;
+import top.ivan.windrop.common.ResourceType;
+import top.ivan.windrop.security.domain.UserAuthEntity;
 
 /**
  * @author Ivan
@@ -8,11 +10,7 @@ import lombok.Data;
  * @date 2021/1/14
  */
 @Data
-public class WindropRequest {
-    /**
-     * 设备id
-     */
-    private String id;
+public class WindropRequest extends UserAuthEntity {
 
     /**
      * 推送的文件名称
@@ -25,22 +23,8 @@ public class WindropRequest {
     private String fileSuffix;
 
     /**
-     * 推送的数据，使用base64编码
-     */
-    private String data;
-
-    /**
      * 推送数据类型
      */
-    private String type;
+    private ResourceType type;
 
-    /**
-     * 资源更新时间
-     */
-    private Long clientUpdateTime;
-
-    /**
-     * 数据签名（sha256）
-     */
-    private String sign;
 }

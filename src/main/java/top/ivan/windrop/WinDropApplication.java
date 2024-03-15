@@ -13,8 +13,8 @@ import reactor.core.publisher.Hooks;
 import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.shortcut.ShortcutApiManager;
 import top.ivan.windrop.svc.*;
-import top.ivan.windrop.tray.WindropSystemTray;
-import top.ivan.windrop.util.SystemUtil;
+import top.ivan.windrop.system.SystemUtils;
+import top.ivan.windrop.system.tray.WindropSystemTray;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileSystemView;
@@ -245,7 +245,7 @@ public class WinDropApplication {
                     if (!dir.exists() || !dir.isDirectory()) {
                         dir.mkdirs();
                     }
-                    Files.write(file.toPath(), SystemUtil.getLocalIPList().stream().filter(s -> !"127.0.0.1".equals(s)).map(s -> s.replaceAll("(.*)\\.\\d{1,3}$", "$1.1>255")).collect(Collectors.toList()), StandardOpenOption.CREATE);
+                    Files.write(file.toPath(), SystemUtils.getLocalIPList().stream().filter(s -> !"127.0.0.1".equals(s)).map(s -> s.replaceAll("(.*)\\.\\d{1,3}$", "$1.1>255")).collect(Collectors.toList()), StandardOpenOption.CREATE);
                 } catch (Exception e) {
                     alert("无法创建白名单文件");
                     log.error("create file 'conf/ipList.txt' failed", e);

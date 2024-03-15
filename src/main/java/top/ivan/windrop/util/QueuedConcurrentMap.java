@@ -72,7 +72,7 @@ public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
     }
 
     private void checkForFull() {
-        if(null == removeEldest) {
+        if (null == removeEldest) {
             return;
         }
         if (size() > maxSize) {

@@ -1,7 +1,7 @@
 package top.ivan.windrop.verify;
 
 import lombok.extern.slf4j.Slf4j;
-import top.ivan.windrop.util.WatchedFile;
+import top.ivan.windrop.system.io.WatchedFile;
 
 import java.io.IOException;
 import java.nio.file.Files;

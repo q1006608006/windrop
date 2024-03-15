@@ -13,13 +13,13 @@ import java.util.Objects;
  * @since 2021/07/13 10:45
  */
 @Service
-@Slf4j(topic = "val" + "id")
+@Slf4j(topic = "valid")
 public class ValidService {
     @Autowired
     private RandomAccessKeyService keyService;
 
     public boolean validSign(String group, String sign, String... contents) {
-        return keyService.match(group, key -> Objects.equals(sign, DigestUtils.sha256Hex(ConvertUtil.combines(true, ";", key, contents))));
+        return keyService.match(group, key -> Objects.equals(sign, ConvertUtil.combines(true, ";", key, contents)));
     }
 
     public String getValidKey(String group, int timeout) {

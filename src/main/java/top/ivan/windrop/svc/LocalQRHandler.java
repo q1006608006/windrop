@@ -3,7 +3,7 @@ package top.ivan.windrop.svc;
 import lombok.Getter;
 import top.ivan.windrop.bean.QrProperties;
 import top.ivan.windrop.bean.WindropConfig;
-import top.ivan.windrop.util.SystemUtil;
+import top.ivan.windrop.system.SystemUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +22,7 @@ public abstract class LocalQRHandler {
 
     public <T extends QrProperties> void fixHost(String type, T props) {
         props.setType(type);
-        List<String> ipList = new ArrayList<>(SystemUtil.getLocalIPList());
+        List<String> ipList = new ArrayList<>(SystemUtils.getLocalIPList());
         ipList.remove("127.0.0.1");
         props.setIpList(ipList);
         props.setPort(config.getPort());

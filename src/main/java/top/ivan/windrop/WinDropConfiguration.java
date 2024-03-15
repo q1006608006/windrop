@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.ScheduledService;
-import top.ivan.windrop.util.SystemUtil;
+import top.ivan.windrop.system.SystemUtils;
 import top.ivan.windrop.verify.IPVerifier;
 
 import java.awt.image.BufferedImage;
@@ -32,7 +32,7 @@ public class WinDropConfiguration {
     public static final String TEMP_FILE_PATH = "temp";
     public static final String UPLOAD_FILES_PATH = "recv";
 
-    private static final String BASE_DATA_ROOT = SystemUtil.getDocumentsPath() + "/windrop/";
+    private static final String BASE_DATA_ROOT = SystemUtils.getDocumentsPath() + "/windrop/";
 
     @Bean
     public HttpMessageConverter<BufferedImage> imageConverter(List<HttpMessageConverter<?>> converters) {

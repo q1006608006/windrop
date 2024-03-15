@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import top.ivan.windrop.random.RandomEncrypt;
 import top.ivan.windrop.util.IDUtil;
-import top.ivan.windrop.util.JSONUtil;
+import top.ivan.windrop.util.JSONUtils;
 
 /**
  * @author Ivan
@@ -28,7 +28,7 @@ public class ConnectQrProperties extends QrProperties {
     public ConnectQrProperties(String token, int maxAccess, RandomEncrypt encryptor) {
         this.option = new Option(token, maxAccess, IDUtil.getShortUuid());
         this.token = token;
-        this.data = encryptor.encrypt(JSONUtil.toString(this.option));
+        this.data = encryptor.encrypt(JSONUtils.toString(this.option));
     }
 
     @AllArgsConstructor

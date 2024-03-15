@@ -9,7 +9,7 @@ import reactor.netty.http.client.HttpClient;
 import reactor.netty.tcp.SslProvider;
 import top.ivan.windrop.bean.ShortcutApi;
 import top.ivan.windrop.bean.WindropConfig;
-import top.ivan.windrop.util.JSONUtil;
+import top.ivan.windrop.util.JSONUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -69,7 +69,7 @@ public class ShortcutApiManager {
                 .secure(SslProvider.defaultClientProvider());
         String json = client.get().uri(apiUrl).responseContent().asString().collectList().map(l -> String.join("\n", l)).block();
         try {
-            ShortcutApi api = JSONUtil.read(json, ShortcutApi.class);
+            ShortcutApi api = JSONUtils.read(json, ShortcutApi.class);
             return () -> api;
         } catch (Exception e) {
             log.error("can not load json", e);
@@ -89,12 +89,12 @@ public class ShortcutApiManager {
                 builder.append(line).append("\n");
             }
             line = builder.toString();
-            ShortcutApi api = JSONUtil.read(line, ShortcutApi.class);
+            ShortcutApi api = JSONUtils.read(line, ShortcutApi.class);
             return () -> api;
         } catch (IOException e) {
             log.error("load from file failed", e);
+            throw new IllegalStateException("can not load data from: " + apiUrl);
         }
-        throw new IllegalStateException("can not load data from: " + apiUrl);
     }
 
 }

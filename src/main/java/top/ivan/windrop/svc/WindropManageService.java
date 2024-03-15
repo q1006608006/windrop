@@ -18,13 +18,14 @@ import reactor.util.context.ContextView;
 import top.ivan.windrop.WinDropApplication;
 import top.ivan.windrop.WinDropConfiguration;
 import top.ivan.windrop.bean.*;
-import top.ivan.windrop.clip.ClipBean;
-import top.ivan.windrop.clip.FileBean;
-import top.ivan.windrop.clip.FileClipBean;
-import top.ivan.windrop.clip.TextClipBean;
-import top.ivan.windrop.ex.HttpClientException;
-import top.ivan.windrop.ex.HttpServerException;
-import top.ivan.windrop.ex.LengthTooLargeException;
+import top.ivan.windrop.common.ResourceType;
+import top.ivan.windrop.system.ClipUtils;
+import top.ivan.windrop.system.FileUtils;
+import top.ivan.windrop.system.io.InitialResourceWrapper;
+import top.ivan.windrop.system.clipboard.*;
+import top.ivan.windrop.exception.HttpClientException;
+import top.ivan.windrop.exception.HttpServerException;
+import top.ivan.windrop.exception.LengthTooLargeException;
 import top.ivan.windrop.util.*;
 import top.ivan.windrop.verify.WebHandler;
 
@@ -45,12 +46,6 @@ import java.util.regex.Pattern;
 @Slf4j
 public class WindropManageService {
 
-    /**
-     * 核心配置
-     */
-    @Autowired
-    private WindropConfig config;
-
     private static final String OPERATE_PUSH = "PUSH";
     private static final String OPERATE_PULL = "PULL";
     private static final Pattern URL_PATTERN = Pattern.compile("(((http|ftp|https)://)(([a-zA-Z0-9._-]+\\.[a-zA-Z]{2,6})|([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}))(:[0-9]{1,4})*)(/[a-zA-Z0-9,=&%_./-~-#]*)?");
@@ -59,11 +54,17 @@ public class WindropManageService {
     private static final String KEY_FOR_REQUEST_NEED_VALID = "@REQUEST_NEED_VALID@";
     private static final String KEY_FOR_DISABLE_TRANS2REDIRECT = "@DISABLE_TRANS2REDIRECT@";
 
+    /**
+     * 核心配置
+     */
     @Autowired
-    private UserService userService;
+    private WindropConfig config;
+
+    private final UserService userService;
 
     @Autowired
     private ValidService validService;
+
 
     /**
      * 资源共享服务
@@ -74,6 +75,10 @@ public class WindropManageService {
     @Resource(name = "asyncExecutor")
     private AsyncTaskExecutor asyncExecutor;
 
+    public WindropManageService(UserService userService) {
+        this.userService = userService;
+    }
+
     /**
      * 定时清理临时文件
      *
@@ -82,60 +87,132 @@ public class WindropManageService {
     @Scheduled(cron = "0 0/15 * * * ?")
     public void cleanTempFile() throws IOException {
         log.debug("start clean old file...");
-        File[] files = ClipUtil.TEMP_DIRECTORY_FILE.listFiles();
+        File[] files = ClipUtils.TEMP_DIRECTORY_FILE.listFiles();
         if (null == files) {
             return;
         }
         // 遍历缓存路径所有文件
         for (File file : files) {
             // 保留与当前剪贴板一致的文件
-            if (!ClipUtil.isOrigin(file)) {
+            if (!ClipUtils.isOrigin(file)) {
                 log.info("clear unless file: '{}'", file);
                 Files.delete(Paths.get(file.toURI()));
             }
         }
     }
 
-    public Mono<String> takeValidKey(ApplyRequest req, ClipBean bean) {
-        boolean isPull = isPull(req.getType());
-        return Mono.just(isPull ? ClipUtil.getClipBeanType(bean) : req.getType())
-                .flatMap(itemType -> confirm(bean, itemType, isPull)
-                        .then(Mono.fromSupplier(() -> validService.getValidKey(getSwapGroupKey(itemType, req.getId(), isPull), 90))))
-                .transform(m -> prepareContext(m, req.getId(), Context.of(ApplyRequest.class, req)));
+    public Mono<String> applyKey(ApplyRequest req) {
+        boolean isPull = req.isPull();
+        if (isPull) {
+            return applyPullKey(req);
+        } else {
+            return applyPushKey(req);
+        }
+    }
+
+    private Mono<String> applyPullKey(ApplyRequest req) {
+        return takeBean().flatMap(bean -> pullConfirm(bean)
+                        .thenReturn(ClipUtils.getClipBeanType(bean))
+                        .flatMap(type -> takeValidKey(ResourceType.valueOf(type.toUpperCase()), req.getId(), true)))
+                .transform(m -> initContext(m, req.getId(), Context.empty()));
+    }
+
+    private Mono<Void> pullConfirm(ClipBean bean) {
+        return doConfirm(true, user -> "是否推送'" + ConvertUtil.shortName(ClipUtils.getResourceName(bean), 50) + "'到[" + user.getAlias() + "]?");
+    }
+
+    private Mono<String> applyPushKey(ApplyRequest req) {
+        return pushConfirm(req.getType(), req)
+                .then(takeValidKey(req.getType(), req.getId(), false))
+                .transform(m -> initContext(m, req.getId(), Context.empty()));
+    }
+
+    private Mono<Void> pushConfirm(ResourceType type, ApplyRequest request) {
+        return doConfirm(false, user -> {
+            switch (type) {
+                case FILE:
+                    return "是否接收来自[" + user.getAlias() + "]的文件: " + ConvertUtil.shortName(request.getFilename(), -50) + "（" + request.getSize() + ")?";
+                case IMAGE:
+                    return "是否接收来自[" + user.getAlias() + "]的图片: " + ConvertUtil.shortName(request.getFilename(), -50) + "（" + request.getSize() + ")?";
+                case TEXT:
+                    return "是否接收来自[" + user.getAlias() + "]的文本?";
+                default:
+                    return "未定义请求: " + JSONUtils.toString(request);
+            }
+        });
+    }
+
+    private Mono<Void> doConfirm(boolean isPull, Function<AccessUser, String> msgBuilder) {
+        boolean isNeedConfirm = true; //todo
+
+        return WebHandler.ip()
+                .map(ip -> "来自" + ip)
+                .flatMap(title -> deferUser().map(user ->
+                        WinDropApplication.confirm(title, msgBuilder.apply(user))
+                )).flatMap(result -> checkConfirm(result, isPull));
+    }
+
+    private Mono<Void> checkConfirm(boolean isEnable, boolean isPull) {
+        return Mono.defer(() -> isEnable
+                ? Mono.empty()
+                : WebHandler.ip().flatMap(ip -> deferUser().doOnNext(user ->
+                log.info("canceled {} request from {}({})"
+                        , isPull ? "push" : "pull"
+                        , user.getAlias()
+                        , ip
+                )).then(Mono.error(new HttpClientException(HttpStatus.FORBIDDEN, "请求已被取消")))
+        ));
+    }
+
+    private Mono<String> takeValidKey(ResourceType type, String id, boolean isPull) {
+        return Mono.just(getSwapGroupKey(type.getName(), id, isPull))
+                .map(group -> validService.getValidKey(group, 90));
+    }
+
+
+    private Mono<AccessUser> deferUser() {
+        return Mono.deferContextual(view -> view.hasKey(AccessUser.class)
+                ? Mono.just(view.get(AccessUser.class))
+                : Mono.error(() -> new HttpClientException(HttpStatus.UNAUTHORIZED, "未知用户")));
+    }
+
+    private Mono<ClipBean> takeBean() {
+        return Mono.empty();
     }
 
     public VerifierMono<Void> updateClipboard(WindropRequest request) {
-        byte[] data = ConvertUtil.decodeBase64(request.getData());
-        Mono<Void> publisher = validRequest(request.getType(), DigestUtils.sha256Hex(data))
+        byte[] data = request.toBytes();
+//        set2Clipboard(data)
+        Mono<Void> publisher = validRequest(request.getType().getName(), DigestUtils.sha256Hex(data))
                 .then(set2Clipboard(data))
                 .flatMap(this::handle)
                 .then()
-                .transform(m -> prepareContext(m, request.getId(), Context.of(WindropRequest.class, request)));
+                .transform(m -> initContext(m, request.getId(), Context.of(WindropRequest.class, request)));
         return new VerifierMono<>(publisher);
     }
 
     public VerifierMono<WindropResponse> quickResponse(WindropRequest req, ClipBean bean, boolean enableRedirect) {
-        Mono<WindropResponse> publisher = validRequest(ClipUtil.getClipBeanType(bean), null)
+        Mono<WindropResponse> publisher = validRequest(ClipUtils.getClipBeanType(bean).toUpperCase(), null)
                 .then(handle(bean))
                 .then(pocketResponse(bean))
                 .onErrorResume(LengthTooLargeException.class,
                         e -> enableRedirect
                                 ? redirectResponse(req, bean).withoutValid()
                                 : Mono.error(e)
-                ).transform(m -> prepareContext(m, req.getId(), Context.of(WindropRequest.class, req)));
+                ).transform(m -> initContext(m, req.getId(), Context.of(WindropRequest.class, req)));
         return new VerifierMono<>(publisher);
     }
 
     public VerifierMono<WindropResponse> redirectResponse(WindropRequest req, ClipBean bean) {
-        Mono<WindropResponse> publisher = validRequest(ClipUtil.getClipBeanType(bean), null)
+        Mono<WindropResponse> publisher = validRequest(ClipUtils.getClipBeanType(bean), null)
                 .then(handle(bean))
                 .then(prepareRedirectResponse(bean))
-                .transform(m -> prepareContext(m, req.getId(), Context.of(WindropRequest.class, req)));
+                .transform(m -> initContext(m, req.getId(), Context.of(WindropRequest.class, req)));
 
         return new VerifierMono<>(publisher);
     }
 
-    private <T> Mono<T> prepareContext(Mono<T> mono, String userId, ContextView ctx) {
+    private <T> Mono<T> initContext(Mono<T> mono, String userId, ContextView ctx) {
         return prepareUser(userId)
                 .flatMap(user -> mono.contextWrite(Context.of(ctx).put(AccessUser.class, user)));
     }
@@ -160,7 +237,7 @@ public class WindropManageService {
             }
             AccessUser user = view.get(AccessUser.class);
             WindropRequest req = view.get(WindropRequest.class);
-            String group = getSwapGroupKey(requiredType, req.getId(), isPull(req.getType()));
+            String group = getSwapGroupKey(requiredType, req.getId(), req.isPull());
 
             return WebHandler.ip()
                     .map(ip -> validService.validSign(group, req.getSign(), ip, user.getValidKey(), content))
@@ -174,7 +251,7 @@ public class WindropManageService {
         return Mono.deferContextual(view -> Mono.just(bean).doFinally(s -> {
             WindropRequest request = view.get(WindropRequest.class);
             AccessUser user = view.get(AccessUser.class);
-            boolean isPull = isPull(request.getType());
+            boolean isPull = request.isPull();
             if (SignalType.ON_COMPLETE == s) {
                 systemNotify(request.getType(), user, bean, isPull);
                 if (!isPull) {
@@ -195,17 +272,17 @@ public class WindropManageService {
                 WindropRequest request = view.get(WindropRequest.class);
                 ClipBean result;
                 switch (request.getType()) {
-                    case "file":
+                    case FILE:
                         // 同步文件
-                        result = ClipUtil.setFile2Clipboard(request.getFilename(), request.getFileSuffix(), data);
+                        result = ClipUtils.setFile2Clipboard(request.getFilename(), request.getFileSuffix(), data);
                         break;
-                    case "text":
+                    case TEXT:
                         // 同步文本
-                        result = ClipUtil.setText2Clipboard(request.getFilename(), request.getFileSuffix(), data, config.getCharset());
+                        result = ClipUtils.setText2Clipboard(request.getFilename(), request.getFileSuffix(), data, config.getCharset());
                         break;
-                    case "image":
+                    case IMAGE:
                         // 同步图片
-                        result = ClipUtil.setImage2Clipboard(request.getFilename(), request.getFileSuffix(), data);
+                        result = ClipUtils.setImage2Clipboard(request.getFilename(), request.getFileSuffix(), data);
                         break;
                     default:
                         // 不支持的类型
@@ -234,9 +311,9 @@ public class WindropManageService {
         return pocket(bean).flatMap(data -> {
             WindropResponse response = new WindropResponse();
             response.setData(ConvertUtil.encodeBase64(data));
-            String type = ClipUtil.getClipBeanType(bean);
+            String type = ClipUtils.getClipBeanType(bean);
             response.setType(type);
-            if (ClipUtil.isFile(bean)) {
+            if (ClipUtils.isFile(bean)) {
                 response.setFilename(((FileBean) bean).getFileName());
             }
             response.setServerUpdateTime(bean.getUpdateTime());
@@ -259,29 +336,29 @@ public class WindropManageService {
             }
         });
 
-        String type = ClipUtil.getClipBeanType(bean);
+        String type = ClipUtils.getClipBeanType(bean);
         switch (type) {
-            case ClipUtil.CLIP_TYPE_FILE:
+            case ClipUtils.CLIP_TYPE_FILE:
                 FileBean fb = (FileBean) bean;
                 File src = fb.getFile();
-                if (FileUtil.getFilesLength(src) > config.getMaxFileLength()) {
+                if (FileUtils.getFilesLength(src) > config.getMaxFileLength()) {
                     return Mono.error(new LengthTooLargeException());
                 }
                 Mono<ClipBean> beanMono;
                 if (src.isDirectory()) {
                     beanMono = Mono.fromSupplier(() -> new FileClipBean(
-                            ConvertUtil.covertDir2Zip(src, getTempPath(ConvertUtil.getZipName(src)), null, null)
+                            ConvertUtil.covertDir2Zip(src, getTempPath(FileUtils.getZipName(src)), null, null)
                             , System.currentTimeMillis()
                     ));
                 } else {
                     beanMono = Mono.just(bean);
                 }
                 return beanMono.flatMap(takeClipData);
-            case ClipUtil.CLIP_TYPE_IMAGE:
+            case ClipUtils.CLIP_TYPE_IMAGE:
                 return takeClipData.apply(bean).flatMap(data -> data.length > config.getMaxFileLength()
                         ? Mono.error(new LengthTooLargeException())
                         : Mono.just(data));
-            case ClipUtil.CLIP_TYPE_TEXT:
+            case ClipUtils.CLIP_TYPE_TEXT:
                 return takeClipData.apply(bean);
             default:
                 return Mono.error(new HttpServerException(HttpStatus.INTERNAL_SERVER_ERROR, "windrop不支持的类型"));
@@ -294,7 +371,7 @@ public class WindropManageService {
      * @param clipBean 原始剪贴板内容
      * @return 重定向响应
      */
-    public Mono<WindropResponse> prepareRedirectResponse(ClipBean clipBean) {
+    private Mono<WindropResponse> prepareRedirectResponse(ClipBean clipBean) {
         String resourceId = IDUtil.getShortUuid();
 
         // 注册到资源共享服务的路径，通过sha256("resourceId;用户密钥")生成
@@ -303,13 +380,13 @@ public class WindropManageService {
         );
 
         Mono<?> register;
-        if (ClipUtil.isFile(clipBean)) {
+        if (ClipUtils.isFile(clipBean)) {
             if (((FileBean) clipBean).getFile().isDirectory()) {
                 FileBean fb = (FileBean) clipBean;
                 InitialResourceWrapper delay = new InitialResourceWrapper();
                 File zipFile = ConvertUtil.covertDir2Zip(
                         fb.getFile()
-                        , getTempPath(ConvertUtil.getZipName(fb.getFile()))
+                        , getTempPath(FileUtils.getZipName(fb.getFile()))
                         , delay
                         , asyncExecutor
                 );
@@ -340,7 +417,7 @@ public class WindropManageService {
             resp.setServerUpdateTime(bean.getUpdateTime());
             resp.setResourceId(resourceId);
             resp.setSuccess(false);
-            resp.setType(ClipUtil.getClipBeanType(bean));
+            resp.setType(ClipUtils.getClipBeanType(bean));
             resp.setMessage("redirected");
 
             return getUserFromCtx().doOnSuccess(user ->
@@ -350,15 +427,15 @@ public class WindropManageService {
     }
 
 
-    private void systemNotify(String type, AccessUser user, ClipBean clipBean, boolean isPull) {
+    private void systemNotify(ResourceType type, AccessUser user, ClipBean clipBean, boolean isPull) {
         // 判断是否需要调用系统提醒
 //        if (needNotify(type, isPush)) { todo
         if (true) {
             StringBuilder mbd = new StringBuilder();
             if (isPull) {
-                mbd.append("同步 ").append(ClipUtil.getClipBeanTypeName(clipBean)).append(" 到设备[").append(user.getAlias()).append("]：\n");
+                mbd.append("同步 ").append(ClipUtils.getClipBeanTypeName(clipBean)).append(" 到设备[").append(user.getAlias()).append("]：\n");
             } else {
-                mbd.append("收到来自[").append(user.getAlias()).append("]的 ").append(ClipUtil.getClipBeanTypeName(clipBean)).append(" ：\n");
+                mbd.append("收到来自[").append(user.getAlias()).append("]的 ").append(ClipUtils.getClipBeanTypeName(clipBean)).append(" ：\n");
             }
             if (clipBean instanceof FileBean) {
                 mbd.append(((FileBean) clipBean).getFileName());
@@ -372,7 +449,7 @@ public class WindropManageService {
         }
     }
 
-    private void tryOpen(ClipBean bean, String type) {
+    private void tryOpen(ClipBean bean, ResourceType type) {
         String resName;
         String resType;
         if (bean instanceof FileBean) {
@@ -414,7 +491,7 @@ public class WindropManageService {
                 if (bean instanceof FileBean) {
                     itemName = ((FileBean) bean).getFileName();
                 } else {
-                    itemName = ClipUtil.getClipBeanTypeName(bean);
+                    itemName = ClipUtils.getClipBeanTypeName(bean);
                 }
                 msg = "是否推送'" + itemName + "'到[" + user.getAlias() + "]?";
             } else {
@@ -429,7 +506,7 @@ public class WindropManageService {
                         msg = "是否接收来自[" + user.getAlias() + "]的文本?";
                         break;
                     default:
-                        msg = "未定义请求: " + JSONUtil.toString(request);
+                        msg = "未定义请求: " + JSONUtils.toString(request);
                         break;
                 }
             }
@@ -467,7 +544,7 @@ public class WindropManageService {
     }
 
     private static String getTempPath(String filename) {
-        return new File(ClipUtil.TEMP_DIRECTORY_FILE, filename).getAbsolutePath();
+        return new File(ClipUtils.TEMP_DIRECTORY_FILE, filename).getAbsolutePath();
     }
 
     private static Mono<AccessUser> getUserFromCtx() {

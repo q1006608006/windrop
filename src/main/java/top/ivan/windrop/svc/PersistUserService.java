@@ -2,9 +2,9 @@ package top.ivan.windrop.svc;
 
 import lombok.extern.slf4j.Slf4j;
 import top.ivan.windrop.bean.AccessUser;
-import top.ivan.windrop.util.JSONUtil;
-import top.ivan.windrop.util.SystemUtil;
-import top.ivan.windrop.util.WatchedFile;
+import top.ivan.windrop.system.SystemUtils;
+import top.ivan.windrop.system.io.WatchedFile;
+import top.ivan.windrop.util.JSONUtils;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -56,7 +56,7 @@ public class PersistUserService implements UserService {
             accessUser.setExpireTime(-1);
         }
         takeUserMap().put(id, accessUser);
-        saveUserMap();
+        saveToFile();
         return accessUser;
     }
 
@@ -64,7 +64,7 @@ public class PersistUserService implements UserService {
     public void updateUser(AccessUser user) throws IOException {
         if (null != user && findUser(user.getId()) != null) {
             takeUserMap().put(user.getId(), user);
-            saveUserMap();
+            saveToFile();
         }
     }
 
@@ -73,53 +73,59 @@ public class PersistUserService implements UserService {
         AccessUser user = findUser(id);
         if (null != user) {
             user.setAccessTime(System.currentTimeMillis());
-            saveUserMap();
+            saveToFile();
         }
     }
 
     @Override
     public void deleteUser(String id) throws IOException {
         takeUserMap().remove(id);
-        saveUserMap();
+        saveToFile();
     }
 
     @Override
     public void deleteAll() throws IOException {
         userMap = new ConcurrentHashMap<>();
-        saveUserMap();
+        saveToFile();
     }
 
     private Map<String, AccessUser> takeUserMap() throws IOException {
         if (userMap == null || fileHandler.isUpdate()) {
             synchronized (this) {
-                byte[] data = fileHandler.load();
-                if (null == data) {
-                    userMap.clear();
-                    saveUserMap();
-                } else {
-                    try {
-                        data = SystemUtil.decrypt(data);
-                    } catch (Exception e) {
-                        log.error("", e);
-                        log.error("数据文件解密失败");
-                        userMap = new ConcurrentHashMap<>();
-                        saveUserMap();
-                        return userMap;
-                    }
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(data)));
-                    userMap = reader.lines().map(str -> JSONUtil.read(str, AccessUser.class)).collect(Collectors.toMap(AccessUser::getId, u -> u));
-                    fileHandler.sync();
+                if (userMap == null || fileHandler.isUpdate()) {
+                    updateUserMap();
                 }
             }
         }
         return userMap;
     }
 
-    private synchronized void saveUserMap() throws IOException {
+    private void updateUserMap() throws IOException {
+        byte[] data = fileHandler.load();
+        if (null == data) {
+            userMap.clear();
+            saveToFile();
+        } else {
+            try {
+                data = SystemUtils.decrypt(data);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(data)));
+                userMap = reader.lines().map(str -> JSONUtils.read(str, AccessUser.class)).collect(Collectors.toMap(AccessUser::getId, u -> u));
+            } catch (Exception e) {
+                log.error("", e);
+                log.error("数据文件解密失败");
+                userMap = new ConcurrentHashMap<>();
+                saveToFile();
+            } finally {
+                fileHandler.sync();
+            }
+        }
+    }
+
+    private synchronized void saveToFile() throws IOException {
         Path path = fileHandler.getPath();
-        List<String> lists = userMap.values().stream().map(JSONUtil::toString).collect(Collectors.toList());
+        List<String> lists = userMap.values().stream().map(JSONUtils::toString).collect(Collectors.toList());
         String data = String.join("\n", lists);
-        byte[] bytes = SystemUtil.encrypt(data.getBytes());
+        byte[] bytes = SystemUtils.encrypt(data.getBytes());
         Files.deleteIfExists(path);
         Files.createFile(path);
         Files.write(path, bytes);

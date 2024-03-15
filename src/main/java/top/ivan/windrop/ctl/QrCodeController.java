@@ -10,10 +10,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
-import top.ivan.windrop.ex.CacheNotAccessException;
-import top.ivan.windrop.ex.CacheNotFoundException;
-import top.ivan.windrop.ex.CacheTimeoutException;
-import top.ivan.windrop.ex.HttpClientException;
+import top.ivan.windrop.exception.CacheNotAccessException;
+import top.ivan.windrop.exception.CacheNotFoundException;
+import top.ivan.windrop.exception.CacheTimeoutException;
+import top.ivan.windrop.exception.HttpClientException;
 import top.ivan.windrop.svc.QrCodeControllerService;
 import top.ivan.windrop.util.ConvertUtil;
 
@@ -55,7 +55,7 @@ public class QrCodeController {
                 //设置返回媒体类型
                 response.getHeaders().setContentType(MediaType.IMAGE_PNG);
                 //生成二维码并返回
-                return ConvertUtil.getQrCodeImageBytes(data, WIDTH, HEIGHT, FORMAT);
+                return ConvertUtil.toQrCode(data, WIDTH, HEIGHT, FORMAT);
             } catch (WriterException | IOException e) {
                 throw new HttpClientException(HttpStatus.INTERNAL_SERVER_ERROR, "二维码生成失败");
             } catch (CacheNotFoundException e) {

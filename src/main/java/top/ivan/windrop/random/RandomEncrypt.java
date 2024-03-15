@@ -1,7 +1,7 @@
 package top.ivan.windrop.random;
 
-import top.ivan.windrop.ex.BadEncryptException;
-import top.ivan.windrop.util.ConvertUtil;
+import top.ivan.jardrop.common.crypto.CryptoUtil;
+import top.ivan.windrop.exception.BadEncryptException;
 
 /**
  * @author Ivan
@@ -15,14 +15,14 @@ public class RandomEncrypt {
     }
 
     public String encrypt(String data) throws BadEncryptException {
-        return ConvertUtil.encrypt(data, key.getAccessKey());
+        return CryptoUtil.encrypt(data, key.getAccessKey());
     }
 
     public String decrypt(String content) throws BadEncryptException {
         if (!key.isTimeout()) {
             String decryptKey = key.getOriginKey();
             try {
-                return ConvertUtil.decrypt(content, decryptKey);
+                return CryptoUtil.decrypt(content, decryptKey);
             } catch (Exception e) {
                 throw new BadEncryptException("数据状态异常", e);
             }

@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import top.ivan.windrop.bean.FileQrProperties;
 import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.util.IDUtil;
-import top.ivan.windrop.util.JSONUtil;
+import top.ivan.windrop.util.JSONUtils;
 
 import java.io.File;
 
@@ -37,7 +37,7 @@ public class LocalQRFileSharedHandler extends LocalQRHandler {
             fixHost("file", props);
 
             log.info("share file[{}] with key '{}'", file.getName(), sharedKey);
-            return JSONUtil.toString(props);
+            return JSONUtils.toString(props);
         }, count, second);
     }
 

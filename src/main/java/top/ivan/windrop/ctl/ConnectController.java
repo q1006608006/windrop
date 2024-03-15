@@ -15,14 +15,14 @@ import top.ivan.windrop.WinDropConfiguration;
 import top.ivan.windrop.bean.ConnectQrProperties;
 import top.ivan.windrop.bean.ConnectRequest;
 import top.ivan.windrop.bean.ConnectResponse;
-import top.ivan.windrop.ex.HttpClientException;
-import top.ivan.windrop.ex.HttpServerException;
+import top.ivan.windrop.exception.HttpClientException;
+import top.ivan.windrop.exception.HttpServerException;
 import top.ivan.windrop.svc.LocalQRConnectHandler;
 import top.ivan.windrop.svc.PersistUserService;
 import top.ivan.windrop.svc.ValidService;
 import top.ivan.windrop.util.ConvertUtil;
 import top.ivan.windrop.util.IDUtil;
-import top.ivan.windrop.util.SystemUtil;
+import top.ivan.windrop.system.SystemUtils;
 import top.ivan.windrop.verify.WebHandler;
 
 import java.io.IOException;
@@ -194,6 +194,6 @@ public class ConnectController {
      * @return ID
      */
     private String generateId(String deviceId, String locate) {
-        return DigestUtils.sha256Hex(SystemUtil.getSystemKey() + ";" + deviceId + ";" + locate).substring(0, 8);
+        return DigestUtils.sha256Hex(SystemUtils.getSystemKey() + ";" + deviceId + ";" + locate).substring(0, 8);
     }
 }

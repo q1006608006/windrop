@@ -9,10 +9,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import top.ivan.windrop.bean.*;
-import top.ivan.windrop.clip.ClipBean;
-import top.ivan.windrop.ex.HttpClientException;
+import top.ivan.windrop.system.clipboard.ClipBean;
+import top.ivan.windrop.exception.HttpClientException;
+import top.ivan.windrop.svc.SecurityManager;
 import top.ivan.windrop.svc.WindropManageService;
-import top.ivan.windrop.util.ClipUtil;
+import top.ivan.windrop.system.ClipUtils;
 import top.ivan.windrop.verify.VerifyIP;
 
 import java.io.IOException;
@@ -26,12 +27,19 @@ import java.io.IOException;
 @RestController
 @RequestMapping("/windrop")
 public class SwapController {
+    private static final String OPERATE_PULL = "PULL";
 
     @Autowired
     private WindropManageService manageService;
 
+    @Autowired
+    private SecurityManager security;
+
     /**
      * 申请校验码
+     * #1 判断请求类型
+     * #2 根据请求类型请求验证key
+     * #3 包装为标准返回对象
      *
      * @param request 推送数据{@link ApplyRequest}
      * @return 随机访问密钥 {@link ApplyResponse}
@@ -39,9 +47,10 @@ public class SwapController {
     @PostMapping("apply")
     @VerifyIP
     public Mono<ApplyResponse> apply(@RequestBody ApplyRequest request) {
-        return takeClipBean()
-                .flatMap(bean -> manageService.takeValidKey(request, bean))
+        return security.buildValidKey(request)
                 .map(ApplyResponse::success);
+/*        return manageService.applyKey(request)
+                .map(ApplyResponse::success);*/
     }
 
     /**
@@ -54,13 +63,17 @@ public class SwapController {
     @VerifyIP
     public Mono<CommonResponse> accept(@RequestBody WindropRequest request) {
         // 校验data
-        if (null == request.getData()) {
+        if (null == request.getContent()) {
             log.error("request without 'data'");
             return Mono.error(new HttpClientException(HttpStatus.BAD_REQUEST, "异常请求"));
         }
 
-        return manageService.updateClipboard(request)
+        return security.valid(request)
+                .then(Mono.defer(() -> manageService.updateClipboard(request)))
                 .then(Mono.just(CommonResponse.success("更新成功")));
+
+//        return manageService.updateClipboard(request)
+//                .then(Mono.just(CommonResponse.success("更新成功")));
     }
 
     /**
@@ -78,12 +91,15 @@ public class SwapController {
     private Mono<ClipBean> takeClipBean() {
         return Mono.defer(() -> {
             try {
-                return Mono.just(ClipUtil.getClipBean());
+                return Mono.just(ClipUtils.getClipBean());
             } catch (IOException e) {
                 return Mono.error(e);
             }
         });
     }
 
+    private static boolean isPull(String operator) {
+        return null == operator || OPERATE_PULL.equalsIgnoreCase(operator);
+    }
 
 }

@@ -1,7 +1,7 @@
 package top.ivan.windrop.svc;
 
 import lombok.extern.slf4j.Slf4j;
-import top.ivan.windrop.clip.ClipBean;
+import top.ivan.windrop.system.clipboard.ClipBean;
 
 /**
  * @author Ivan

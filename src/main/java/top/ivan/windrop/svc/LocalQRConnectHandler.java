@@ -4,9 +4,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import top.ivan.windrop.bean.ConnectQrProperties;
 import top.ivan.windrop.bean.WindropConfig;
-import top.ivan.windrop.ex.BadEncryptException;
+import top.ivan.windrop.exception.BadEncryptException;
 import top.ivan.windrop.random.RandomEncrypt;
-import top.ivan.windrop.util.JSONUtil;
+import top.ivan.windrop.util.JSONUtils;
 
 import static top.ivan.windrop.WinDropConfiguration.CONNECT_GROUP;
 
@@ -37,13 +37,13 @@ public class LocalQRConnectHandler extends LocalQRHandler {
         ConnectQrProperties qrData = new ConnectQrProperties(token, second, randomEncrypt);
         fixHost("connect", qrData);
 
-        String qrBody = JSONUtil.toString(qrData);
+        String qrBody = JSONUtils.toString(qrData);
         return qrCodeService.register(k -> qrBody, 1, EXPIRE_TIME);
     }
 
     public ConnectQrProperties.Option getOption(String data) throws BadEncryptException {
         String body = randomEncrypt.decrypt(data);
-        return JSONUtil.read(body, ConnectQrProperties.Option.class);
+        return JSONUtils.read(body, ConnectQrProperties.Option.class);
     }
 
     public void reset() {

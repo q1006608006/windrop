@@ -12,21 +12,14 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
-import top.ivan.windrop.clip.FileClipBean;
-import top.ivan.windrop.ex.BadEncryptException;
+import top.ivan.windrop.system.FileUtils;
+import top.ivan.windrop.system.io.InitialResourceWrapper;
 
-import javax.crypto.*;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import javax.imageio.ImageIO;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.EnumMap;
 import java.util.concurrent.Executor;
 
@@ -37,14 +30,6 @@ import java.util.concurrent.Executor;
  */
 @Slf4j
 public class ConvertUtil {
-    private static final IvParameterSpec SEC_IV;
-
-    static {
-        byte[] sys = DigestUtils.md5(SystemUtil.getSystemKey());
-        byte[] iv = new byte[16];
-        System.arraycopy(sys, 0, iv, 0, 16);
-        SEC_IV = new IvParameterSpec(iv);
-    }
 
     private ConvertUtil() {
     }
@@ -73,28 +58,15 @@ public class ConvertUtil {
         return DigestUtils.sha256Hex(data);
     }
 
-    public static byte[] getQrCodeImageBytes(String content, int width, int height, String format) throws WriterException, IOException {
-                /*
-           定义二维码的参数
-        */
-        EnumMap<EncodeHintType, Object> option = new EnumMap<>(EncodeHintType.class);
-        // 设置二维码字符编码
-        option.put(EncodeHintType.CHARACTER_SET, "UTF-8");
-        // 设置二维码纠错等级
-        option.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
-        // 设置二维码边距
-        option.put(EncodeHintType.MARGIN, 2);
-
-        BitMatrix bitMatrix = new MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, width, height, option);
-        BufferedImage image = MatrixToImageWriter.toBufferedImage(bitMatrix);
+    public static byte[] toQrCode(String content, int width, int height, String format) throws WriterException, IOException {
 
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        ImageIO.write(image, format, bout);
+        ImageIO.write(toQrCode(content, width, height), format, bout);
 
         return bout.toByteArray();
     }
 
-    public static Image getQrCodeImage(String content, int width, int height) throws WriterException {
+    public static BufferedImage toQrCode(String content, int width, int height) throws WriterException {
         //定义二维码的参数
         EnumMap<EncodeHintType, Object> option = new EnumMap<>(EncodeHintType.class);
         // 设置二维码字符编码
@@ -105,58 +77,7 @@ public class ConvertUtil {
         option.put(EncodeHintType.MARGIN, 2);
 
         BitMatrix bitMatrix = new MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, width, height, option);
-
         return MatrixToImageWriter.toBufferedImage(bitMatrix);
-    }
-
-    public static String encrypt(String msg, String key) throws BadEncryptException {
-        return encodeBase64(encrypt(msg.getBytes(), key));
-    }
-
-    public static String decrypt(String msg, String key) throws BadEncryptException {
-        return new String(decrypt(decodeBase64(msg), key));
-    }
-
-    public static byte[] encrypt(byte[] content, String key) throws BadEncryptException {
-        try {
-            if (key.length() < 16) {
-                key = (key + "0000000000000000");
-            }
-            key = key.substring(0, 16);
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            SecretKey secretKey = new SecretKeySpec(key.getBytes(), "AES");
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, SEC_IV);
-            return cipher.doFinal(content);
-        } catch (NoSuchAlgorithmException e) {
-            throw new BadEncryptException(e);
-        } catch (InvalidKeyException e) {
-            throw new BadEncryptException("密钥格式不符合要求", e);
-        } catch (NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException e) {
-            throw new BadEncryptException("解密失败", e);
-        } catch (InvalidAlgorithmParameterException e) {
-            throw new BadEncryptException("非法向量");
-        }
-    }
-
-    public static byte[] decrypt(byte[] msg, String key) throws BadEncryptException {
-        try {
-            if (key.length() < 16) {
-                key = (key + "0000000000000000");
-            }
-            key = key.substring(0, 16);
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            SecretKey secretKey = new SecretKeySpec(key.getBytes(), "AES");
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, SEC_IV);
-            return cipher.doFinal(msg);
-        } catch (NoSuchAlgorithmException e) {
-            throw new BadEncryptException(e);
-        } catch (InvalidKeyException e) {
-            throw new BadEncryptException("密钥格式不符合要求", e);
-        } catch (NoSuchPaddingException | BadPaddingException | IllegalBlockSizeException e) {
-            throw new BadEncryptException("密文格式异常", e);
-        } catch (InvalidAlgorithmParameterException e) {
-            throw new BadEncryptException("非法向量");
-        }
     }
 
     private static final long KB_SIZE = 1024;
@@ -221,7 +142,7 @@ public class ConvertUtil {
             boolean failed = false;
             if (!fin.exists()) {
                 try {
-                    ZipUtil.nioZip(src, fin);
+                    FileUtils.nioZip(src, fin);
                 } catch (IOException e) {
                     failed = true;
                     log.error("zip file failed", e);
@@ -246,17 +167,10 @@ public class ConvertUtil {
         if (len > name.length() && limit < name.length()) {
             return name.substring(0, limit) + "...";
         } else if (len < name.length() && len > 0) {
-            return name.substring(len) + "...";
+            return "..." + name.substring(len);
         } else {
             return name;
         }
-    }
-
-    public static String getZipName(File file) {
-        if (file.isDirectory()) {
-            return file.getName() + ".zip";
-        }
-        return file.getName().replaceAll("(.*)(\\..*)?", "$1.zip");
     }
 
 }

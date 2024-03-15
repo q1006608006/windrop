@@ -19,7 +19,7 @@ import java.util.Map;
  * 处理未捕获的异常
  */
 @Slf4j
-@ControllerAdvice
+//@ControllerAdvice
 public class MyExceptionHandler {
     private static final MediaType MEDIA_TYPE = new MediaType("application", "json", StandardCharsets.UTF_8);
 
