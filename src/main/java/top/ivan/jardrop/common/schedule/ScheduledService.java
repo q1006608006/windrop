@@ -1,4 +1,4 @@
-package top.ivan.jardrop.common.service;
+package top.ivan.jardrop.common.schedule;
 
 import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
 import org.springframework.stereotype.Component;

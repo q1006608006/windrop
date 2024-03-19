@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import top.ivan.jardrop.common.cache.LimitCache;
-import top.ivan.jardrop.common.service.ScheduledService;
+import top.ivan.jardrop.common.schedule.ScheduledService;
 
 /**
  * @author Ivan

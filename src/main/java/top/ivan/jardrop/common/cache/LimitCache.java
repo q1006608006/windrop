@@ -24,21 +24,23 @@ public class LimitCache<T> {
 
     private final AccessLimiter accessLimiter = new AccessLimiter();
 
-    public String register(Function<String, T> supplier, int count, int second) {
+    public String register(Function<String, T> supplier, int count, int expireMillions) {
         String key = IDUtils.getShortUuid();
-        register(key, () -> supplier.apply(key), count, second);
+        register(key, () -> supplier.apply(key), count, expireMillions);
         return key;
     }
 
-    public void register(String key, Supplier<T> supplier, int count, int second) {
+    public void register(String key, Supplier<T> supplier, int count, int expireMillions) {
         if (count < 1) {
             count = Integer.MAX_VALUE;
         }
-        if (second < 1) {
-            second = 60;
+        if (expireMillions < 1) {
+            expireMillions = Integer.MAX_VALUE;
         }
-        accessLimiter.register(key, second * 1000L, count, task -> supplierMap.remove(key, supplier));
-        supplierMap.put(key, new InitObject<>(supplier));
+
+        InitObject<T> obj = new InitObject<>(supplier);
+        supplierMap.put(key, obj);
+        accessLimiter.register(key, expireMillions, count, task -> supplierMap.remove(key, obj));
     }
 
     public T getData(String key) throws CacheNotAccessableException {
@@ -96,7 +98,7 @@ public class LimitCache<T> {
         }
 
         public V peek() {
-            return supplier.get();
+            return supplier == null ? null : supplier.get();
         }
     }
 

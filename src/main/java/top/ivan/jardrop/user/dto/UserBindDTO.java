@@ -11,5 +11,4 @@ public class UserBindDTO {
     private String name;
     private String id;
     private String token;
-
 }

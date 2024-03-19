@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import top.ivan.jardrop.common.cache.LimitCache;
 import top.ivan.jardrop.user.Entity.AccessUser;
-import top.ivan.jardrop.user.Entity.Protocol;
+import top.ivan.jardrop.user.Entity.ConnectProtocol;
 import top.ivan.jardrop.user.adapter.UserAdapter;
 import top.ivan.jardrop.user.dto.UserBindDTO;
 
@@ -24,7 +24,7 @@ public class UserService {
     @Autowired
     private UserAdapter adapter;
 
-    public AccessUser addUser(UserBindDTO bind, Protocol protocol) {
+    public AccessUser addUser(UserBindDTO bind, ConnectProtocol protocol) {
         AccessUser user = userRepo.newUser(bind.getId(), bind.getName(), protocol.toValidKey(), protocol.getExpireMillions());
         return user;
     }
