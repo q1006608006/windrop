@@ -1,4 +1,4 @@
-package top.ivan.jardrop.qrcode;
+package top.ivan.jardrop.common.cache;
 
 /**
  * @author Ivan

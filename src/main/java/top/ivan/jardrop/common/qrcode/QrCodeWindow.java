@@ -1,4 +1,4 @@
-package top.ivan.jardrop.qrcode;
+package top.ivan.jardrop.common.qrcode;
 
 import com.google.zxing.WriterException;
 
@@ -17,20 +17,20 @@ import java.util.function.Supplier;
  * @since 2024/03/19 10:50
  */
 public class QrCodeWindow {
-    private static final Function<Integer, String> DEFAULT_REST_COUNTER_TEXT_PARSER = d -> String.format("有效时间剩余: %ds", d - 1);
+    private static final Function<Integer, String> DEFAULT_REST_COUNTER_TEXT_PARSER = d -> String.format("二维码剩余有效时间: %ds", d - 1);
     private final int size;
 
-    private final int refreshInterval;
+    private final int expiredSecond;
     private final Supplier<String> codeTextSupplier;
     private Function<Integer, String> restTextParser = DEFAULT_REST_COUNTER_TEXT_PARSER;
-    private Consumer<QrCodeWindow> onUpdate;
+    private Consumer<QrCodeWindow> onExpire;
     private Consumer<QrCodeWindow> onClose;
 
     private final DisplayWindow display;
 
-    public QrCodeWindow(String title, int size, int refreshInterval, Supplier<String> codeTextSupplier) {
+    public QrCodeWindow(String title, int size, int expiredSecond, Supplier<String> codeTextSupplier) {
         this.size = size;
-        this.refreshInterval = refreshInterval;
+        this.expiredSecond = expiredSecond;
         this.codeTextSupplier = codeTextSupplier;
         this.display = new DisplayWindow(title);
     }
@@ -45,25 +45,33 @@ public class QrCodeWindow {
         }
     }
 
-    private void update() {
+    private void onExpire() {
+        if (null != onExpire) {
+            onExpire.accept(this);
+        }
+    }
+
+    private void onClose() {
+        if (null != onClose) {
+            onClose.accept(this);
+        }
+    }
+
+    public void refresh() {
         String content = codeTextSupplier.get();
         if (null != content) {
             setQrImageText(content);
         }
-        if (null != onUpdate) {
-            onUpdate.accept(this);
-        }
+        this.display.resetCounter();
     }
 
     public void active() {
-        update();
+        refresh();
         this.display.active();
     }
 
     public void close() {
-        if (null != onClose) {
-            onClose.accept(this);
-        }
+        this.display.close();
     }
 
     public void setRestTextParser(Function<Integer, String> restTextParser) {
@@ -76,11 +84,11 @@ public class QrCodeWindow {
         this.display.desLabel.setText(displayText);
     }
 
-    public void setOnUpdate(Consumer<QrCodeWindow> onUpdate) {
-        this.onUpdate = onUpdate;
+    public void onExpire(Consumer<QrCodeWindow> onExpire) {
+        this.onExpire = onExpire;
     }
 
-    public void setOnClose(Consumer<QrCodeWindow> onClose) {
+    public void onClose(Consumer<QrCodeWindow> onClose) {
         this.onClose = onClose;
     }
 
@@ -107,15 +115,13 @@ public class QrCodeWindow {
         }
 
         private void initTimer() {
-            if (refreshInterval < 1) {
+            if (expiredSecond < 1) {
                 return;
             }
             timer = new Timer(1000, e -> {
-                if (--curCount == 0) {
-                    QrCodeWindow.this.update();
-                    resetCounter();
-                } else {
-                    updateCounter(curCount);
+                updateCounter(--curCount);
+                if (curCount == 0) {
+                    QrCodeWindow.this.onExpire();
                 }
             });
             timer.setRepeats(true);
@@ -132,7 +138,7 @@ public class QrCodeWindow {
         public void resetCounter() {
             timer.stop();
             timer.start();
-            curCount = refreshInterval;
+            curCount = expiredSecond;
             updateCounter(curCount);
         }
 
@@ -144,7 +150,6 @@ public class QrCodeWindow {
             setVisible(true);
             if (!timer.isRunning()) {
                 resetCounter();
-                timer.start();
             }
         }
 
@@ -160,14 +165,14 @@ public class QrCodeWindow {
                 public void windowClosing(WindowEvent e) {
                     super.windowClosing(e);
                     close();
-                    QrCodeWindow.this.close();
+                    QrCodeWindow.this.onClose();
                 }
             });
 
             imageLabel.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    QrCodeWindow.this.update();
+                    QrCodeWindow.this.onExpire();
                     resetCounter();
                     super.mouseClicked(e);
                 }
@@ -177,11 +182,6 @@ public class QrCodeWindow {
         private void initUI() {
             setSize(400, 250);
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-/*            setLayout(new BorderLayout());
-            add(desLabel, BorderLayout.NORTH);
-            add(imageLabel, BorderLayout.CENTER);
-            add(countdownLabel, BorderLayout.SOUTH);*/
 
             GroupLayout layout = new GroupLayout(getContentPane());
             getContentPane().setLayout(layout);
@@ -199,8 +199,6 @@ public class QrCodeWindow {
                     .addComponent(countdownLabel)
             );
 
-
-//            pack();
             setLocationRelativeTo(null);
 
             setCenter();
@@ -224,6 +222,12 @@ public class QrCodeWindow {
             setLocation(x, y);
         }
 
+    }
+
+    private static String formatShowText(String src) {
+        String displayText = "<html>" + src + "</html>";
+        displayText = displayText.replaceAll("\n", "<br>");
+        return displayText;
     }
 
 }

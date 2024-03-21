@@ -1,4 +1,4 @@
-package top.ivan.jardrop.qrcode;
+package top.ivan.jardrop.common.qrcode;
 
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;

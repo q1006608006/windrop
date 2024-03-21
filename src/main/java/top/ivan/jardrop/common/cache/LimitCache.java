@@ -2,11 +2,11 @@ package top.ivan.jardrop.common.cache;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import top.ivan.jardrop.common.challenge.AccessLimiter;
 import top.ivan.jardrop.common.challenge.ChallengeTask;
 import top.ivan.jardrop.common.util.IDUtils;
-import top.ivan.jardrop.qrcode.CacheNotAccessableException;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -66,6 +66,11 @@ public class LimitCache<T> {
         InitObject<T> supplier = supplierMap.get(key);
         ChallengeTask.State state = accessLimiter.challenge(key);
         return new CacheData<>(state, supplier);
+    }
+
+    public void remove(@NonNull String key) {
+        supplierMap.remove(key);
+        accessLimiter.remove(key);
     }
 
     @AllArgsConstructor

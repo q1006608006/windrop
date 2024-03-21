@@ -1,4 +1,4 @@
-package top.ivan.jardrop.user.Entity;
+package top.ivan.jardrop.user.domain;
 
 import lombok.Data;
 
@@ -8,7 +8,7 @@ import lombok.Data;
  * @date 2021/3/11
  */
 @Data
-public class AccessUser {
+public class AccessUserEntity {
     private String id;
     private String validKey;
     private String alias;

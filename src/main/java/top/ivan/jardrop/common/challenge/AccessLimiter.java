@@ -32,4 +32,8 @@ public class AccessLimiter {
         return challengeKeys.challenge(key, null);
     }
 
+    public void remove(String key) {
+        challengeKeys.remove(key);
+    }
+
 }

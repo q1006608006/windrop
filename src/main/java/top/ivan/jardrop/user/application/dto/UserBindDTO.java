@@ -1,4 +1,4 @@
-package top.ivan.jardrop.user.dto;
+package top.ivan.jardrop.user.application.dto;
 
 import lombok.Data;
 

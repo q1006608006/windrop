@@ -1,6 +1,6 @@
 package top.ivan.jardrop.user.vo;
 
-import top.ivan.jardrop.user.dto.UserBindDTO;
+import top.ivan.jardrop.user.application.dto.UserBindDTO;
 
 /**
  * @author Ivan

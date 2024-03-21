@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import top.ivan.jardrop.common.vo.ResponseVO;
 import top.ivan.jardrop.user.application.UserAddApp;
-import top.ivan.jardrop.user.dto.UserBindDTO;
+import top.ivan.jardrop.user.application.dto.UserBindDTO;
 import top.ivan.jardrop.user.vo.UserBindResponse;
 import top.ivan.jardrop.user.vo.UserBindVO;
 
