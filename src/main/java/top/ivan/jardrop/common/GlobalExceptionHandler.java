@@ -4,11 +4,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
+import top.ivan.jardrop.common.module.ResponseVO;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -18,13 +20,13 @@ import java.util.Map;
  * 处理未捕获的异常
  */
 @Slf4j
-//@ControllerAdvice
+@ControllerAdvice
 public class GlobalExceptionHandler {
     private static final MediaType MEDIA_TYPE = new MediaType("application", "json", StandardCharsets.UTF_8);
 
     @ResponseBody
     @ExceptionHandler(value = Exception.class)
-    public ResponseEntity<?> exceptionHandler(Exception e) {
+    public ResponseVO<?> exceptionHandler(Exception e) {
         Map<String, Object> data = new HashMap<>();
         data.put("success", false);
         data.put("message", e.getMessage() == null ? e.getClass().getName() : e.getMessage());
@@ -44,6 +46,6 @@ public class GlobalExceptionHandler {
             log.error("未知异常", e);
         }
 
-        return ResponseEntity.status(status).contentType(MEDIA_TYPE).body(data);
+        return ResponseVO.fail("failed", data);
     }
 }

@@ -1,7 +1,6 @@
 package top.ivan.jardrop.common.schedule;
 
 import org.springframework.scheduling.concurrent.ScheduledExecutorFactoryBean;
-import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -12,7 +11,6 @@ import java.util.concurrent.TimeUnit;
  * @description
  * @date 2021/3/26
  */
-@Component
 public class ScheduledService {
     private final ScheduledExecutorService scheduled;
 

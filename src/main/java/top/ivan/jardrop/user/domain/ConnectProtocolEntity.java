@@ -3,6 +3,9 @@ package top.ivan.jardrop.user.domain;
 import lombok.Data;
 import org.apache.commons.codec.digest.DigestUtils;
 import top.ivan.jardrop.common.util.IDUtils;
+import top.ivan.jardrop.user.userinterface.module.vo.UserBindVO;
+
+import java.util.Objects;
 
 /**
  * @author Ivan
@@ -30,12 +33,19 @@ public class ConnectProtocolEntity {
         return ConnectProtocolEntity.toValidKey(keyRoot, keyElement);
     }
 
+    public boolean checkSign(UserBindVO bind) {
+        return Objects.equals(
+                DigestUtils.sha256Hex(String.join(";", bind.getId(), bind.getName(), tokenElement)),
+                bind.getSign()
+        );
+    }
+
     public static String toToken(String keyRoot, String tokenElement) {
-        return DigestUtils.sha256Hex(keyRoot + tokenElement);
+        return DigestUtils.sha256Hex(String.join(";", keyRoot, tokenElement));
     }
 
     public static String toValidKey(String keyRoot, String keyElement) {
-        return DigestUtils.sha256Hex(keyRoot + keyElement);
+        return DigestUtils.sha256Hex(String.join(";", keyRoot, keyElement));
     }
 
 }

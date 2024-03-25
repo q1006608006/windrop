@@ -1,4 +1,4 @@
-package top.ivan.jardrop.common.vo;
+package top.ivan.jardrop.common.module;
 
 import lombok.Data;
 

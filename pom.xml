@@ -148,20 +148,9 @@
                             <artifactId>nothing</artifactId>
                         </include>
                     </includes>
+                    <mainClass>top.ivan.jardrop.JarDrop</mainClass>
                 </configuration>
             </plugin>
-
-            <!--
-                        <plugin>
-                            <groupId>top.ivan.fishtouch</groupId>
-                            <artifactId>format</artifactId>
-                            <version>0.2.0</version>
-                            <configuration>
-                                <mainClass>top.ivan.windrop.WinDropApplication</mainClass>
-                                <shellType>springboot</shellType>
-                            </configuration>
-                        </plugin>
-            -->
 
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>

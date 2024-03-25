@@ -2,29 +2,32 @@ package top.ivan.jardrop.user.application;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import top.ivan.jardrop.common.cache.CacheNotAccessableException;
 import top.ivan.jardrop.common.cache.LambdaHandler;
 import top.ivan.jardrop.common.cache.LimitCache;
+import top.ivan.jardrop.common.exception.IllegalClientRequestException;
 import top.ivan.jardrop.common.qrcode.QrCodeWindow;
-import top.ivan.jardrop.user.application.assembler.UserConnectAssembler;
-import top.ivan.jardrop.user.application.dto.UserBindDTO;
-import top.ivan.jardrop.user.application.dto.UserConnectDTO;
 import top.ivan.jardrop.user.domain.ConnectProtocolEntity;
 import top.ivan.jardrop.user.domain.UserFactory;
-import top.ivan.jardrop.user.domain.UserRepository;
-import top.ivan.jardrop.user.util.DateUtils;
-import top.ivan.jardrop.user.vo.UserBindResponse;
+import top.ivan.jardrop.user.infrastructure.DateUtils;
+import top.ivan.jardrop.user.infrastructure.assembler.UserConnectAssembler;
+import top.ivan.jardrop.user.infrastructure.repo.UserRepository;
+import top.ivan.jardrop.user.userinterface.module.dto.UserBindDTO;
+import top.ivan.jardrop.user.userinterface.module.dto.UserConnectDTO;
+import top.ivan.jardrop.user.userinterface.module.vo.UserBindVO;
 import top.ivan.windrop.util.JSONUtils;
 
 /**
  * @author Ivan
  * @since 2024/03/12 10:36
  */
+@Slf4j
 @Service
-public class UserAddApp {
+public class UserAddService {
 
     private static final UserConnectAssembler USER_CONNECT_ASSEMBLER = new UserConnectAssembler();
 
@@ -37,20 +40,12 @@ public class UserAddApp {
     private final LimitCache<ConnectProtocolEntity> protocolCache = new LimitCache<>();
     private final Cache<String, QrCodeWindow> windowCache = CacheBuilder.newBuilder().maximumSize(1).build();
 
-    public Mono<UserBindResponse> bindUser(UserBindDTO bind) {
+    public Mono<UserBindDTO> bindUser(UserBindVO bind) {
         return getProtocol(bind.getToken())
-                .doOnNext(p -> userRepo.saveUser(userFactory.newUser(bind.getId(),
-                        bind.getName(),
-                        p.toValidKey(),
-                        p.getExpireMillions())))
-                .map(p -> new UserBindResponse(bind.getId(), p.getKeyElement()));
-    }
-
-    private Mono<ConnectProtocolEntity> getProtocol(String token) {
-        return Mono.fromSupplier(() -> protocolCache.getCacheData(token))
-                .filter(LimitCache.CacheData::isAccessible)
-                .map(LimitCache.CacheData::getData)
-                .or(Mono.error(() -> new CacheNotAccessableException("no protocol found")));
+                .flatMap(p -> p.checkSign(bind) ? Mono.just(p) :
+                        Mono.error(() -> new IllegalClientRequestException("核验失败，请检查网络安全")))
+                .doOnNext(p -> userRepo.saveUser(userFactory.newUser(bind.getId(), bind.getName(), p)))
+                .map(p -> new UserBindDTO(bind.getId(), p.getKeyElement()));
     }
 
     public Mono<UserConnectDTO> newUserConnect(int expireMillions) {
@@ -76,12 +71,12 @@ public class UserAddApp {
                 () -> newUserConnect(expireMillions)
                         .doOnNext(handler::setValue)
                         .map(JSONUtils::toString)
-                        .block());
+                        .toFuture().join());
 
         //set trigger
         window.onExpire(w -> removeConnectBind(handler.getValue())
-                .then(Mono.fromRunnable(w::refresh)).block());
-        window.onClose(w -> removeConnectBind(handler.getValue()).block());
+                .then(Mono.fromRunnable(w::refresh)).toFuture().join());
+        window.onClose(w -> removeConnectBind(handler.getValue()).toFuture().join());
 
         //active
         return Mono.fromRunnable(window::active)
@@ -92,10 +87,22 @@ public class UserAddApp {
                 .doOnNext(uc -> windowCache.put(uc.getTokenElement(), window));
     }
 
+    private Mono<ConnectProtocolEntity> getProtocol(String token) {
+        return Mono.fromSupplier(() -> protocolCache.getCacheData(token))
+                .filter(LimitCache.CacheData::isAccessible)
+                .map(LimitCache.CacheData::getData)
+                .switchIfEmpty(Mono.error(() -> new CacheNotAccessableException("no protocol found")))
+                .doOnError(e -> log.error("get protocol failed: {}", e.getMessage()));
+    }
+
     private static String formatQrCodeDescription(int expireMillions, String hostname) {
         return String.format("连接域名: %s\n" +
                         "连接有效期: %s",
                 hostname, DateUtils.secondToDateDuration(expireMillions / 1000));
     }
 
+    public static void main(String[] args) {
+        UserAddService service = new UserAddService();
+        service.showConnectQrCode(1000 * 60 * 60 * 10).block();
+    }
 }

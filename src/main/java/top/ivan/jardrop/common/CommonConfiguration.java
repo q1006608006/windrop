@@ -21,8 +21,4 @@ public class CommonConfiguration {
         return new ScheduledService(3);
     }
 
-    @Bean
-    public LimitCache getLimitCache() {
-        return new LimitCache();
-    }
 }

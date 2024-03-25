@@ -136,6 +136,9 @@ public class QrCodeWindow {
         }
 
         public void resetCounter() {
+            if (null == timer) {
+                return;
+            }
             timer.stop();
             timer.start();
             curCount = expiredSecond;
@@ -143,18 +146,22 @@ public class QrCodeWindow {
         }
 
         public void updateCounter(int curCount) {
-            countdownLabel.setText(restTextParser.apply(curCount));
+            if (null != timer) {
+                countdownLabel.setText(restTextParser.apply(curCount));
+            }
         }
 
         public void active() {
             setVisible(true);
-            if (!timer.isRunning()) {
+            if (timer != null && !timer.isRunning()) {
                 resetCounter();
             }
         }
 
         public void close() {
-            timer.stop();
+            if (timer != null) {
+                timer.stop();
+            }
             setVisible(false);
             dispose();
         }

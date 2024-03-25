@@ -1,8 +1,8 @@
-package top.ivan.jardrop.user.application.assembler;
+package top.ivan.jardrop.user.infrastructure.assembler;
 
 import top.ivan.jardrop.common.util.NetUtils;
-import top.ivan.jardrop.user.application.dto.UserConnectDTO;
 import top.ivan.jardrop.user.domain.ConnectProtocolEntity;
+import top.ivan.jardrop.user.userinterface.module.dto.UserConnectDTO;
 
 /**
  * @author Ivan

@@ -1,4 +1,4 @@
-package top.ivan.jardrop.user.application.dto;
+package top.ivan.jardrop.user.userinterface.module.vo;
 
 import lombok.Data;
 
@@ -7,8 +7,9 @@ import lombok.Data;
  * @since 2024/03/08 16:21
  */
 @Data
-public class UserBindDTO {
+public class UserBindVO {
     private String name;
     private String id;
     private String token;
+    private String sign;
 }

@@ -1,4 +1,4 @@
-package top.ivan.jardrop.user.util;
+package top.ivan.jardrop.user.infrastructure;
 
 /**
  * @author Ivan
