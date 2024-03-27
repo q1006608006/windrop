@@ -82,7 +82,6 @@ public class WindropManageService {
     /**
      * 定时清理临时文件
      *
-     * @throws IOException
      */
     @Scheduled(cron = "0 0/15 * * * ?")
     public void cleanTempFile() throws IOException {

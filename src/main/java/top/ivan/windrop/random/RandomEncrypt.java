@@ -1,6 +1,6 @@
 package top.ivan.windrop.random;
 
-import top.ivan.jardrop.common.crypto.CryptoUtil;
+import top.ivan.jdrop.common.crypto.CryptoUtil;
 import top.ivan.windrop.exception.BadEncryptException;
 
 /**

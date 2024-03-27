@@ -148,7 +148,7 @@
                             <artifactId>nothing</artifactId>
                         </include>
                     </includes>
-                    <mainClass>top.ivan.jardrop.JarDrop</mainClass>
+                    <mainClass>top.ivan.jdrop.JDropApplication</mainClass>
                 </configuration>
             </plugin>
 
