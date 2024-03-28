@@ -32,8 +32,12 @@ public class UserConnectController {
                 .map(ResponseVO::success);
     }
 
-    @RequestMapping("show")
+    //todo remove after develop finished
+    @Autowired
+    private UserAddWindow userAddWindow;
+
     public Mono<Void> show() {
-        return userAddService.showConnectQrCode(60 * 1000 * 30).then();
+        userAddWindow.newConnectWindow(60 * 1000 * 30);
+        return Mono.never();
     }
 }
