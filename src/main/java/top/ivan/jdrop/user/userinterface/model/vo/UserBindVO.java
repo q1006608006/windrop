@@ -1,4 +1,4 @@
-package top.ivan.jdrop.user.userinterface.module.vo;
+package top.ivan.jdrop.user.userinterface.model.vo;
 
 import lombok.Data;
 

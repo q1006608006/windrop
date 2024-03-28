@@ -11,4 +11,6 @@ public interface UserRepository {
 
     void saveUser(AccessUserEntity user);
 
+    AccessUserEntity findUser(String id);
+
 }

@@ -12,9 +12,15 @@ import top.ivan.windrop.util.JSONUtils;
 @Component
 public class UserRepositoryImpl implements UserRepository {
 
-
     @Override
     public void saveUser(AccessUserEntity user) {
+        //todo
         System.out.println(JSONUtils.toString(user));
+    }
+
+    @Override
+    public AccessUserEntity findUser(String id) {
+        //todo
+        return new AccessUserEntity();
     }
 }

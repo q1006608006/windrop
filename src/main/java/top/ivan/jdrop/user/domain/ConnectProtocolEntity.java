@@ -3,7 +3,7 @@ package top.ivan.jdrop.user.domain;
 import lombok.Data;
 import org.apache.commons.codec.digest.DigestUtils;
 import top.ivan.jdrop.common.util.IDUtils;
-import top.ivan.jdrop.user.userinterface.module.vo.UserBindVO;
+import top.ivan.jdrop.user.userinterface.model.vo.UserBindVO;
 
 import java.util.Objects;
 

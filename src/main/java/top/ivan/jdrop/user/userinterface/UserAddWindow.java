@@ -1,0 +1,81 @@
+package top.ivan.jdrop.user.userinterface;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+import top.ivan.jdrop.common.cache.VolatileHandler;
+import top.ivan.jdrop.common.qrcode.QrCodeWindow;
+import top.ivan.jdrop.user.application.UserAddService;
+import top.ivan.jdrop.user.infrastructure.DateUtils;
+import top.ivan.jdrop.user.userinterface.model.dto.UserConnectDTO;
+import top.ivan.windrop.util.JSONUtils;
+
+/**
+ * @author Ivan
+ * @since 2024/03/29 00:54
+ */
+@Component
+public class UserAddWindow {
+
+    @Autowired
+    private UserAddService userAddService;
+    private static final VolatileHandler<QrCodeWindow> UNI_QR_CODE_WINDOW = new VolatileHandler<>();
+    private static final VolatileHandler<UserConnectDTO> UNI_USER_CONNECT_DATA = new VolatileHandler<>();
+
+
+    public void newConnectWindow(int expireMillions) {
+        //init window
+        QrCodeWindow window = createConnectQrCodeWindow(expireMillions);
+
+        //set trigger for remove old bind info
+        setWindowTrigger(window);
+
+        //active
+        activeWindow(expireMillions, window);
+    }
+
+    private void activeWindow(int expireMillions, QrCodeWindow window) {
+        window.active();
+        UserConnectDTO uc = UNI_USER_CONNECT_DATA.getValue();
+        window.setDescription(formatQrCodeDescription(expireMillions, uc.getHostName()));
+    }
+
+    private void setWindowTrigger(QrCodeWindow window) {
+        window.onExpire(w -> userAddService.removeConnectBind(UNI_USER_CONNECT_DATA.getValue())
+                .then(Mono.fromRunnable(w::refresh))
+                .toFuture().join()
+        );
+        window.onClose(w -> userAddService.removeConnectBind(UNI_USER_CONNECT_DATA.getValue())
+                .then(Mono.fromRunnable(() -> UNI_USER_CONNECT_DATA.setValue(null)))
+                .then(Mono.fromRunnable(() -> UNI_QR_CODE_WINDOW.setValue(null)))
+                .toFuture().join()
+        );
+    }
+
+    private QrCodeWindow createConnectQrCodeWindow(int expireMillions) {
+        //release last window
+        if (UNI_QR_CODE_WINDOW.hasValue()) {
+            UNI_QR_CODE_WINDOW.getValue().close();
+        }
+
+        //create new window
+        QrCodeWindow window = new QrCodeWindow("连接码", 55, 60,
+                () -> userAddService.newUserConnect(expireMillions)
+                        .doOnNext(UNI_USER_CONNECT_DATA::setValue)
+                        .map(JSONUtils::toString)
+                        .toFuture().join()
+        );
+
+        //set unique qr_code_window
+        UNI_QR_CODE_WINDOW.setValue(window);
+        return window;
+    }
+
+
+    private static String formatQrCodeDescription(int expireMillions, String hostname) {
+        return String.format("连接域名: %s\n" +
+                        "连接有效期: %s",
+                hostname, DateUtils.secondToDateDuration(expireMillions / 1000));
+    }
+
+}
