@@ -4,8 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
-import top.ivan.jdrop.user.domain.AccessUserEntity;
-import top.ivan.jdrop.user.infrastructure.repo.UserRepository;
+import top.ivan.jdrop.user.domain.repo.UserRepository;
 
 /**
  * @author Ivan
@@ -13,7 +12,7 @@ import top.ivan.jdrop.user.infrastructure.repo.UserRepository;
  */
 @Slf4j
 @Service
-public class UserService {
+public class UserActionService {
 
     @Autowired
     private UserRepository userRepository;

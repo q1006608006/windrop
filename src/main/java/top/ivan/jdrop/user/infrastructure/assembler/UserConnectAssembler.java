@@ -1,6 +1,6 @@
 package top.ivan.jdrop.user.infrastructure.assembler;
 
-import top.ivan.jdrop.user.domain.ConnectProtocolEntity;
+import top.ivan.jdrop.user.domain.model.ConnectProtocolEntity;
 import top.ivan.jdrop.user.userinterface.model.dto.UserConnectDTO;
 
 /**

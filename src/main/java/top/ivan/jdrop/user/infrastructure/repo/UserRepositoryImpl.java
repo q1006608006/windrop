@@ -1,8 +1,8 @@
-package top.ivan.jdrop.user.infrastructure.repo.impl;
+package top.ivan.jdrop.user.infrastructure.repo;
 
 import org.springframework.stereotype.Component;
-import top.ivan.jdrop.user.domain.AccessUserEntity;
-import top.ivan.jdrop.user.infrastructure.repo.UserRepository;
+import top.ivan.jdrop.user.domain.model.AccessUserEntity;
+import top.ivan.jdrop.user.domain.repo.UserRepository;
 import top.ivan.windrop.util.JSONUtils;
 
 /**

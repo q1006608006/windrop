@@ -1,15 +1,14 @@
-package top.ivan.jdrop.exchange.userinterface.model.vo;
+package top.ivan.jdrop.security.userinterface.model.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
 /**
  * @author Ivan
- * @since 2024/03/28 17:21
+ * @since 2024/03/29 00:25
  */
 @Data
 @AllArgsConstructor
-public class SignVO {
-    private String sign;
+public class ApplyDTO {
     private String token;
 }

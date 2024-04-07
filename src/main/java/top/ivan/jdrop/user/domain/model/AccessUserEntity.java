@@ -1,4 +1,4 @@
-package top.ivan.jdrop.user.domain;
+package top.ivan.jdrop.user.domain.model;
 
 import lombok.Data;
 

@@ -1,4 +1,4 @@
-package top.ivan.jdrop.exchange.userinterface.model.vo;
+package top.ivan.jdrop.security.userinterface.model.vo;
 
 import lombok.Data;
 import top.ivan.jdrop.exchange.userinterface.model.constant.MediaType;

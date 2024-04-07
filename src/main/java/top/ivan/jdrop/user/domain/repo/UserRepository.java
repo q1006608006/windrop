@@ -1,7 +1,7 @@
-package top.ivan.jdrop.user.infrastructure.repo;
+package top.ivan.jdrop.user.domain.repo;
 
 
-import top.ivan.jdrop.user.domain.AccessUserEntity;
+import top.ivan.jdrop.user.domain.model.AccessUserEntity;
 
 /**
  * @author Ivan

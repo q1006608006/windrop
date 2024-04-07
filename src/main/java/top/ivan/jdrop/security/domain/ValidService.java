@@ -1,4 +1,4 @@
-package top.ivan.jdrop.exchange.application;
+package top.ivan.jdrop.security.domain;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,8 +8,8 @@ import top.ivan.jdrop.common.cache.CacheNotAccessableException;
 import top.ivan.jdrop.common.cache.LimitCache;
 import top.ivan.jdrop.common.exception.IllegalClientRequestException;
 import top.ivan.jdrop.common.util.IDUtils;
-import top.ivan.jdrop.exchange.userinterface.model.vo.SignVO;
-import top.ivan.jdrop.user.application.UserService;
+import top.ivan.jdrop.security.userinterface.model.vo.SignVO;
+import top.ivan.jdrop.user.application.UserActionService;
 
 /**
  * @author Ivan
@@ -21,11 +21,10 @@ public class ValidService {
 
     private final LimitCache<String> limitCache = new LimitCache<>();
 
-
     @Autowired
-    private UserService userService;
+    private UserActionService userActionService;
 
-    public Mono<String> newRequestToken(String userId) {
+    public Mono<String> takeValidToken(String userId) {
         return Mono.just(IDUtils.get32UUID())
                 .doOnNext(token -> limitCache.register(userId, () -> token, 1, 60 * 1000));
     }
@@ -39,16 +38,15 @@ public class ValidService {
                     }
                 })
                 .doOnNext(token -> log.debug("valid info: userId({}), sign({}), data({})", userId, token, data))
-                .flatMap(token -> userService.validSign(userId, sign, buildValidContent(token, data)))
+                .flatMap(token -> userActionService.validSign(userId, sign, buildValidContent(token, data)))
                 .doOnError(e -> log.warn("valid sign failed: {}", e.getMessage()))
                 .flatMap(r -> Boolean.TRUE.equals(r) ? Mono.empty() : Mono.error(new IllegalClientRequestException("sign valid failed")));
     }
 
-
     public Mono<SignVO> sign(String userId, String data) {
         String token = IDUtils.get32UUID();
         String content = buildValidContent(token, data);
-        return userService.sign(userId, content)
+        return userActionService.sign(userId, content)
                 .map(sign -> new SignVO(sign, token));
     }
 
