@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import top.ivan.jdrop.common.module.ResponseVO;
 import top.ivan.jdrop.user.application.UserAddService;
-import top.ivan.jdrop.user.userinterface.model.dto.UserBindDTO;
-import top.ivan.jdrop.user.userinterface.model.vo.UserBindVO;
+import top.ivan.jdrop.user.application.dto.UserBindDTO;
+import top.ivan.jdrop.user.userinterface.vo.UserBindVO;
 
 /**
  * @author Ivan
@@ -19,7 +19,7 @@ import top.ivan.jdrop.user.userinterface.model.vo.UserBindVO;
  */
 @Slf4j
 @RestController
-@RequestMapping("/jardrop")
+@RequestMapping("/jdrop")
 public class UserConnectController {
 
     @Autowired

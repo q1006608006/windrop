@@ -7,8 +7,8 @@ import top.ivan.jdrop.common.cache.VolatileHandler;
 import top.ivan.jdrop.common.qrcode.QrCodeWindow;
 import top.ivan.jdrop.user.application.UserAddService;
 import top.ivan.jdrop.user.infrastructure.DateUtils;
-import top.ivan.jdrop.user.userinterface.model.dto.UserConnectDTO;
-import top.ivan.windrop.util.JSONUtils;
+import top.ivan.jdrop.user.application.dto.UserConnectDTO;
+import top.ivan.jdrop.common.util.JSONUtils;
 
 /**
  * @author Ivan

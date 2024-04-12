@@ -6,7 +6,7 @@ import top.ivan.windrop.bean.ConnectQrProperties;
 import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.exception.BadEncryptException;
 import top.ivan.windrop.random.RandomEncrypt;
-import top.ivan.windrop.util.JSONUtils;
+import top.ivan.jdrop.common.util.JSONUtils;
 
 import static top.ivan.windrop.WinDropConfiguration.CONNECT_GROUP;
 

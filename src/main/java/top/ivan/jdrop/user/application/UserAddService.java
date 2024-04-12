@@ -14,9 +14,9 @@ import top.ivan.jdrop.user.infrastructure.assembler.UserConnectAssembler;
 import top.ivan.jdrop.user.domain.factory.ConnectProtocolFactory;
 import top.ivan.jdrop.user.domain.factory.UserFactory;
 import top.ivan.jdrop.user.domain.repo.UserRepository;
-import top.ivan.jdrop.user.userinterface.model.dto.UserBindDTO;
-import top.ivan.jdrop.user.userinterface.model.dto.UserConnectDTO;
-import top.ivan.jdrop.user.userinterface.model.vo.UserBindVO;
+import top.ivan.jdrop.user.application.dto.UserBindDTO;
+import top.ivan.jdrop.user.application.dto.UserConnectDTO;
+import top.ivan.jdrop.user.userinterface.vo.UserBindVO;
 
 /**
  * @author Ivan

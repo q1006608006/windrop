@@ -3,7 +3,7 @@ package top.ivan.jdrop.user.infrastructure.repo;
 import org.springframework.stereotype.Component;
 import top.ivan.jdrop.user.domain.model.AccessUserEntity;
 import top.ivan.jdrop.user.domain.repo.UserRepository;
-import top.ivan.windrop.util.JSONUtils;
+import top.ivan.jdrop.common.util.JSONUtils;
 
 /**
  * @author Ivan
