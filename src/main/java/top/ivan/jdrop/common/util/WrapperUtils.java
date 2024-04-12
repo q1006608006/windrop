@@ -6,4 +6,8 @@ public class WrapperUtils {
         return Boolean.TRUE.equals(obj);
     }
 
+    public static boolean isFalse(Object obj) {
+        return !isTrue(obj);
+    }
+
 }

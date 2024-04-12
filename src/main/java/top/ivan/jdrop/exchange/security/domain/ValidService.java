@@ -4,9 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
-import top.ivan.jdrop.common.cache.CacheNotAccessableException;
 import top.ivan.jdrop.common.cache.LimitCache;
-import top.ivan.jdrop.common.exception.IllegalClientRequestException;
 import top.ivan.jdrop.common.util.IDUtils;
 import top.ivan.jdrop.common.util.WrapperUtils;
 import top.ivan.jdrop.exchange.security.userinterface.vo.SignVO;
@@ -31,19 +29,21 @@ public class ValidService {
         return token;
     }
 
-    public boolean valid(String userId, String sign, String data) {
-        LimitCache.CacheData<String> cd = limitCache.getCacheData(userId);
-        if (cd.isAccessible()) {
+    public boolean valid(String id, String sign, String data) {
+        LimitCache.CacheData<String> cd = limitCache.getCacheData(id);
+        if (!cd.isAccessible()) {
+            log.warn("not accessible(unauthorized/expired): id({})", id);
+            return false;
+        } else {
             String token = cd.getData();
-            log.debug("valid info: userId({}), sign({}), data({})", userId, token, data);
-            boolean pass = WrapperUtils.isTrue(userActionService.validSign(userId, sign, buildValidContent(token, data)).block());
-            if (pass) {
-                return true;
-            } else {
+            log.debug("valid info: id({}), sign({}), data({})", id, token, data);
+            Boolean pass = userActionService.validSign(id, sign, buildValidContent(token, data)).block();
+            if (WrapperUtils.isFalse(pass)) {
                 log.warn("valid token failed: {}", token);
+                return false;
             }
         }
-        return false;
+        return true;
     }
 
     public Mono<SignVO> sign(String userId, String data) {

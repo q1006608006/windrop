@@ -9,6 +9,6 @@ import top.ivan.jdrop.common.constant.MediaType;
 public class ClipboardService {
 
     public Mono<Void> setClipboard(ClipboardSetterVO setter) {
-        return Mono.empty();//todo
+        return Mono.empty().then();//todo
     }
 }
