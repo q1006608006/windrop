@@ -8,7 +8,7 @@ import top.ivan.jdrop.common.module.ResponseVO;
 import top.ivan.jdrop.exchange.common.vo.ExchangeVO;
 import top.ivan.jdrop.exchange.common.vo.UploadData;
 import top.ivan.jdrop.exchange.swap.application.UploadService;
-import top.ivan.jdrop.exchange.swap.application.dto.ExchangeResult;
+import top.ivan.jdrop.exchange.common.vo.ExchangeResult;
 
 /**
  * @author Ivan

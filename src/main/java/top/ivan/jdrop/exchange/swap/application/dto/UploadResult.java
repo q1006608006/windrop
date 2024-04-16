@@ -1,5 +1,8 @@
 package top.ivan.jdrop.exchange.swap.application.dto;
 
+import top.ivan.jdrop.exchange.common.constant.ExchangeState;
+import top.ivan.jdrop.exchange.common.vo.ExchangeResult;
+
 public class UploadResult extends ExchangeResult {
     public static final UploadResult SUCCESS = new UploadResult(ExchangeState.SUCCESS);
     public static final UploadResult FAILED = new UploadResult(ExchangeState.FAILED);

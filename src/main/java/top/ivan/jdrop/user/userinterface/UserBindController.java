@@ -2,10 +2,7 @@ package top.ivan.jdrop.user.userinterface;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 import top.ivan.jdrop.common.module.ResponseVO;
 import top.ivan.jdrop.user.application.UserAddService;
@@ -20,7 +17,7 @@ import top.ivan.jdrop.user.userinterface.vo.UserBindVO;
 @Slf4j
 @RestController
 @RequestMapping("/jdrop")
-public class UserConnectController {
+public class UserBindController {
 
     @Autowired
     private UserAddService userAddService;
@@ -36,6 +33,7 @@ public class UserConnectController {
     @Autowired
     private UserAddWindow userAddWindow;
 
+    @GetMapping("show")
     public Mono<Void> show() {
         userAddWindow.newConnectWindow(60 * 1000 * 30);
         return Mono.never();

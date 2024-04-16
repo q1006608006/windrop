@@ -13,6 +13,6 @@ public class VolatileHandler<T> {
     private volatile T value;
 
     public boolean hasValue() {
-        return Objects.isNull(value);
+        return !Objects.isNull(value);
     }
 }

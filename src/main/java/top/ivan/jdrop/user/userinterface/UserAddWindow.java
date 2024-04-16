@@ -5,10 +5,10 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import top.ivan.jdrop.common.cache.VolatileHandler;
 import top.ivan.jdrop.common.qrcode.QrCodeWindow;
-import top.ivan.jdrop.user.application.UserAddService;
-import top.ivan.jdrop.user.infrastructure.DateUtils;
-import top.ivan.jdrop.user.application.dto.UserConnectDTO;
 import top.ivan.jdrop.common.util.JSONUtils;
+import top.ivan.jdrop.user.application.UserAddService;
+import top.ivan.jdrop.user.application.dto.UserConnectDTO;
+import top.ivan.jdrop.user.infrastructure.DateUtils;
 
 /**
  * @author Ivan
@@ -19,6 +19,7 @@ public class UserAddWindow {
 
     @Autowired
     private UserAddService userAddService;
+
     private static final VolatileHandler<QrCodeWindow> UNI_QR_CODE_WINDOW = new VolatileHandler<>();
     private static final VolatileHandler<UserConnectDTO> UNI_USER_CONNECT_DATA = new VolatileHandler<>();
 
@@ -37,7 +38,7 @@ public class UserAddWindow {
     private void activeWindow(int expireMillions, QrCodeWindow window) {
         window.active();
         UserConnectDTO uc = UNI_USER_CONNECT_DATA.getValue();
-        window.setDescription(formatQrCodeDescription(expireMillions, uc.getHostName()));
+        window.setDescription(formatQrCodeDescription(expireMillions, uc.getHostName(), uc.getNetPort()));
     }
 
     private void setWindowTrigger(QrCodeWindow window) {
@@ -72,10 +73,11 @@ public class UserAddWindow {
     }
 
 
-    private static String formatQrCodeDescription(int expireMillions, String hostname) {
+    private static String formatQrCodeDescription(int expireMillions, String hostname, int serverPort) {
         return String.format("连接域名: %s\n" +
+                        "服务端口: %d\n" +
                         "连接有效期: %s",
-                hostname, DateUtils.secondToDateDuration(expireMillions / 1000));
+                hostname, serverPort, DateUtils.secondToDateDuration(expireMillions / 1000));
     }
 
 }

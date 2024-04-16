@@ -9,13 +9,13 @@ import top.ivan.jdrop.common.cache.CacheNotAccessableException;
 import top.ivan.jdrop.common.cache.LimitCache;
 import top.ivan.jdrop.common.exception.IllegalClientRequestException;
 import top.ivan.jdrop.common.util.NetUtils;
-import top.ivan.jdrop.user.domain.model.ConnectProtocolEntity;
-import top.ivan.jdrop.user.infrastructure.assembler.UserConnectAssembler;
-import top.ivan.jdrop.user.domain.factory.ConnectProtocolFactory;
-import top.ivan.jdrop.user.domain.factory.UserFactory;
-import top.ivan.jdrop.user.domain.repo.UserRepository;
 import top.ivan.jdrop.user.application.dto.UserBindDTO;
 import top.ivan.jdrop.user.application.dto.UserConnectDTO;
+import top.ivan.jdrop.user.domain.factory.ConnectProtocolFactory;
+import top.ivan.jdrop.user.domain.factory.UserFactory;
+import top.ivan.jdrop.user.domain.model.ConnectProtocolEntity;
+import top.ivan.jdrop.user.domain.repo.UserRepository;
+import top.ivan.jdrop.user.infrastructure.assembler.UserConnectAssembler;
 import top.ivan.jdrop.user.userinterface.vo.UserBindVO;
 
 /**
@@ -66,7 +66,7 @@ public class UserAddService {
         String token = ConnectProtocolEntity.toToken(uc.getKeyRoot(), uc.getTokenElement());
         return Mono.fromRunnable(() -> protocolCache.remove(token));
     }
-
+    
     private Mono<ConnectProtocolEntity> getProtocol(String token) {
         return Mono.defer(() -> {
             try {

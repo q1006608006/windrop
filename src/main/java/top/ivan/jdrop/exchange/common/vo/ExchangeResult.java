@@ -1,7 +1,8 @@
-package top.ivan.jdrop.exchange.swap.application.dto;
+package top.ivan.jdrop.exchange.common.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import top.ivan.jdrop.exchange.common.constant.ExchangeState;
 
 @Data
 @AllArgsConstructor
