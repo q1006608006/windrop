@@ -15,7 +15,7 @@ public class UserFactory {
         user.setId(id);
         user.setAlias(name);
         user.setValidKey(protocol.toValidKey());
-        user.setExpireTime(protocol.getExpireMillions());
+        user.setExpireTime(protocol.nextExpireTime());
         user.setAccessTime(System.currentTimeMillis());
         return user;
     }

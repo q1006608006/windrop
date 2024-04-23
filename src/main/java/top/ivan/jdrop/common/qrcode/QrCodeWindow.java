@@ -188,7 +188,7 @@ public class QrCodeWindow {
 
         private void initUI() {
             setSize(400, 250);
-            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
             GroupLayout layout = new GroupLayout(getContentPane());
             getContentPane().setLayout(layout);

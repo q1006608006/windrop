@@ -1,5 +1,7 @@
 package top.ivan.jdrop.user.infrastructure;
 
+import java.util.Date;
+
 /**
  * @author Ivan
  * @since 2024/03/20 15:11
@@ -29,5 +31,9 @@ public class DateUtils {
             builder.append(rest).append("秒");
         }
         return builder.toString();
+    }
+
+    public static String timestampToString(long millions) {
+        return new Date(millions).toString();
     }
 }

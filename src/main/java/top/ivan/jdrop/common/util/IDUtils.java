@@ -1,5 +1,7 @@
 package top.ivan.jdrop.common.util;
 
+import org.apache.commons.codec.digest.DigestUtils;
+
 import java.util.UUID;
 
 /**
@@ -26,6 +28,11 @@ public class IDUtils {
         }
         return shortBuffer.toString();
     }
+
+    public static String getDeviceID() {
+        return DigestUtils.sha256Hex(String.join(";", NetUtils.getLocalHostName(), NetUtils.getPCMac()));
+    }
+
 
     public static String get32UUID() {
         return UUID.randomUUID().toString().trim().replace("-", "");

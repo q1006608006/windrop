@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import top.ivan.jdrop.common.JDropConfig;
-import top.ivan.jdrop.common.cache.CacheNotAccessableException;
 import top.ivan.jdrop.common.cache.LimitCache;
 import top.ivan.jdrop.common.exception.IllegalClientRequestException;
 import top.ivan.jdrop.common.util.NetUtils;
@@ -66,13 +65,20 @@ public class UserAddService {
         String token = ConnectProtocolEntity.toToken(uc.getKeyRoot(), uc.getTokenElement());
         return Mono.fromRunnable(() -> protocolCache.remove(token));
     }
-    
+
     private Mono<ConnectProtocolEntity> getProtocol(String token) {
         return Mono.defer(() -> {
-            try {
-                return Mono.just(protocolCache.getData(token));
-            } catch (CacheNotAccessableException e) {
-                return Mono.error(e);
+            LimitCache.CacheData<ConnectProtocolEntity> protocol = protocolCache.getCacheData(token);
+            if (protocol.isAccessible()) {
+                return Mono.just(protocol.getData());
+            } else {
+                if (protocol.isLimit()) {
+                    return Mono.error(new IllegalClientRequestException("超过访问次数"));
+                } else if (protocol.isTimeout()) {
+                    return Mono.error(new IllegalClientRequestException("已超时"));
+                } else {
+                    return Mono.error(new IllegalClientRequestException("无效请求"));
+                }
             }
         }).doOnError(e -> log.error("get protocol failed: {}", e.getMessage()));
     }

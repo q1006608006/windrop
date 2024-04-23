@@ -60,7 +60,7 @@ public class UserAddWindow {
         }
 
         //create new window
-        QrCodeWindow window = new QrCodeWindow("连接码", 55, 60,
+        QrCodeWindow window = new QrCodeWindow("连接码", 110, 60,
                 () -> userAddService.newUserConnect(expireMillions)
                         .doOnNext(UNI_USER_CONNECT_DATA::setValue)
                         .map(JSONUtils::toString)

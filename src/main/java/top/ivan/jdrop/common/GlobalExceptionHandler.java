@@ -45,6 +45,6 @@ public class GlobalExceptionHandler {
             log.error("未知异常", e);
         }
 
-        return ResponseVO.fail("failed", data);
+        return ResponseVO.fail(e.getMessage(), data);
     }
 }

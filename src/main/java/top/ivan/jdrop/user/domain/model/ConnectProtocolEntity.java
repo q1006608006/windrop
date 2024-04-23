@@ -33,6 +33,10 @@ public class ConnectProtocolEntity {
         return ConnectProtocolEntity.toValidKey(keyRoot, keyElement);
     }
 
+    public long nextExpireTime() {
+        return System.currentTimeMillis() + expireMillions;
+    }
+
     public boolean checkSign(UserBindVO bind) {
         return Objects.equals(
                 DigestUtils.sha256Hex(String.join(";", bind.getId(), bind.getName(), tokenElement)),
