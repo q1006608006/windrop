@@ -3,10 +3,10 @@ package top.ivan.jdrop.user.userinterface;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
-import top.ivan.jdrop.common.cache.VolatileHandler;
-import top.ivan.jdrop.common.qrcode.QrCodeWindow;
-import top.ivan.jdrop.common.util.JSONUtils;
-import top.ivan.jdrop.user.application.UserAddService;
+import top.ivan.jdrop.tool.cache.VolatileHandler;
+import top.ivan.jdrop.framework.QrCodeWindow;
+import top.ivan.jdrop.tool.JSONUtils;
+import top.ivan.jdrop.user.application.UserManager;
 import top.ivan.jdrop.user.application.dto.UserConnectDTO;
 import top.ivan.jdrop.user.infrastructure.DateUtils;
 
@@ -18,7 +18,7 @@ import top.ivan.jdrop.user.infrastructure.DateUtils;
 public class UserAddWindow {
 
     @Autowired
-    private UserAddService userAddService;
+    private UserManager userManager;
 
     private static final VolatileHandler<QrCodeWindow> UNI_QR_CODE_WINDOW = new VolatileHandler<>();
     private static final VolatileHandler<UserConnectDTO> UNI_USER_CONNECT_DATA = new VolatileHandler<>();
@@ -42,11 +42,11 @@ public class UserAddWindow {
     }
 
     private void setWindowTrigger(QrCodeWindow window) {
-        window.onExpire(w -> userAddService.removeConnectBind(UNI_USER_CONNECT_DATA.getValue())
+        window.onExpire(w -> userManager.removeConnectBind(UNI_USER_CONNECT_DATA.getValue())
                 .then(Mono.fromRunnable(w::refresh))
                 .toFuture().join()
         );
-        window.onClose(w -> userAddService.removeConnectBind(UNI_USER_CONNECT_DATA.getValue())
+        window.onClose(w -> userManager.removeConnectBind(UNI_USER_CONNECT_DATA.getValue())
                 .then(Mono.fromRunnable(() -> UNI_USER_CONNECT_DATA.setValue(null)))
                 .then(Mono.fromRunnable(() -> UNI_QR_CODE_WINDOW.setValue(null)))
                 .toFuture().join()
@@ -61,7 +61,7 @@ public class UserAddWindow {
 
         //create new window
         QrCodeWindow window = new QrCodeWindow("连接码", 110, 60,
-                () -> userAddService.newUserConnect(expireMillions)
+                () -> userManager.newUserConnect(expireMillions)
                         .doOnNext(UNI_USER_CONNECT_DATA::setValue)
                         .map(JSONUtils::toString)
                         .toFuture().join()

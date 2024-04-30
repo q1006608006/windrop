@@ -1,1 +1,0 @@
-package top.ivan.jdrop.clipboard;

@@ -3,10 +3,10 @@ package top.ivan.jdrop.user.infrastructure.repo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import top.ivan.jdrop.common.cache.VolatileHandler;
-import top.ivan.jdrop.common.fs.EncryptFile;
-import top.ivan.jdrop.common.util.IDUtils;
-import top.ivan.jdrop.common.util.JSONUtils;
+import top.ivan.jdrop.tool.cache.VolatileHandler;
+import top.ivan.jdrop.tool.fs.EncryptFile;
+import top.ivan.jdrop.tool.IDUtils;
+import top.ivan.jdrop.tool.JSONUtils;
 import top.ivan.jdrop.user.domain.model.AccessUserEntity;
 import top.ivan.jdrop.user.domain.repo.UserRepository;
 import top.ivan.jdrop.user.infrastructure.DateUtils;
@@ -68,7 +68,6 @@ public class UserRepositoryImpl implements UserRepository {
                     dataFile.create();
                 }
                 byte[] data = dataFile.load();
-                dataFile.syncWatcher();
                 String content = data == null || data.length == 0 ? "{}" : new String(data);
                 Map<String, AccessUserEntity> map = JSONUtils.read(content, new TypeReference<Map<String, AccessUserEntity>>() {
                 });
@@ -87,7 +86,6 @@ public class UserRepositoryImpl implements UserRepository {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        dataFile.syncWatcher();
     }
 
 }

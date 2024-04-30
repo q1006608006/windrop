@@ -127,6 +127,14 @@
             <version>3.29.2-GA</version>
         </dependency>
 
+        <!--vavr-->
+        <dependency>
+            <groupId>io.vavr</groupId>
+            <artifactId>vavr</artifactId>
+            <version>0.10.4</version>
+        </dependency>
+
+
     </dependencies>
 
     <build>
@@ -148,7 +156,7 @@
                             <artifactId>nothing</artifactId>
                         </include>
                     </includes>
-                    <mainClass>top.ivan.jdrop.JDropApplication</mainClass>
+                    <mainClass>top.ivan.jdrop.framework.boot.JDropApplication</mainClass>
                 </configuration>
             </plugin>
 

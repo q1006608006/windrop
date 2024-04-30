@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-import top.ivan.jdrop.common.module.ResponseVO;
-import top.ivan.jdrop.user.application.UserAddService;
+import top.ivan.jdrop.framework.module.ResponseVO;
+import top.ivan.jdrop.user.application.UserManager;
 import top.ivan.jdrop.user.application.dto.UserBindDTO;
 import top.ivan.jdrop.user.userinterface.vo.UserBindVO;
 
@@ -20,12 +20,12 @@ import top.ivan.jdrop.user.userinterface.vo.UserBindVO;
 public class UserBindController {
 
     @Autowired
-    private UserAddService userAddService;
+    private UserManager userManager;
 
     @PostMapping("/bind")
     public Mono<ResponseVO<UserBindDTO>> bind(@RequestBody Mono<UserBindVO> m) {
         return m.cast(UserBindVO.class)
-                .flatMap(uc -> userAddService.bindUser(uc))
+                .flatMap(uc -> userManager.bindUser(uc))
                 .map(ResponseVO::success);
     }
 
