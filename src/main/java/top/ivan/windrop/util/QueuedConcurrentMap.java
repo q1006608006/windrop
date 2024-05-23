@@ -1,9 +1,12 @@
 package top.ivan.windrop.util;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.*;
 
 /**
@@ -11,6 +14,7 @@ import java.util.function.*;
  * @description
  * @date 2021/3/25
  */
+@Slf4j
 public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
 
     private final int maxSize;
@@ -18,16 +22,18 @@ public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
     private final transient BiPredicate<K, V> removeEldest;
     private final transient BiConsumer<K, V> cleanAction;
 
+    private final ReentrantLock releaseLock = new ReentrantLock();
+
     public QueuedConcurrentMap(int max, BiPredicate<K, V> removeEldest, BiConsumer<K, V> cleanAction) {
         this.maxSize = max;
-        this.keyQueue = new LinkedBlockingQueue<>(maxSize * 2);
+        this.keyQueue = new LinkedBlockingQueue<>();
         this.removeEldest = removeEldest;
         this.cleanAction = cleanAction == null ? (k, v) -> {
         } : cleanAction;
     }
 
-    public QueuedConcurrentMap(int max, BiConsumer<K, V> cleanAction) {
-        this(max, null, cleanAction);
+    public QueuedConcurrentMap(int max, BiPredicate<K, V> removeEldest) {
+        this(max, removeEldest, null);
     }
 
     public QueuedConcurrentMap(int max) {
@@ -59,14 +65,9 @@ public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
             keyQueue.add(key);
         }
         V r = supplier.get();
-        if (size() > maxSize) {
+        int keySize = keyQueue.size();
+        if (keySize > maxSize) {
             checkForFull();
-            // force remove
-            while (size() > maxSize && !keyQueue.isEmpty()) {
-                K removedKey = keyQueue.poll();
-                V removed = remove(removedKey);
-                cleanAction.accept(removedKey, removed);
-            }
         }
         return r;
     }
@@ -75,16 +76,37 @@ public class QueuedConcurrentMap<K, V> extends ConcurrentHashMap<K, V> {
         if (null == removeEldest) {
             return;
         }
-        if (size() > maxSize) {
-            List<K> list = new ArrayList<>(keyQueue);
-            for (K k : list) {
-                V v = get(k);
-                if (removeEldest.test(k, v) && remove(k, v)) {
-                    keyQueue.remove(k);
-                    cleanAction.accept(k, v);
-                    if (size() <= maxSize) {
+        if (keyQueue.size() > maxSize) {
+            Iterator<K> itr = keyQueue.iterator();
+            while (itr.hasNext()) {
+                K key = itr.next();
+                V val = get(key);
+                if (removeEldest.test(key, val) && remove(key, val)) {
+                    itr.remove();
+                    cleanAction.accept(key, val);
+                    if (keyQueue.size() <= maxSize) {
                         return;
                     }
+                }
+            }
+        }
+
+        // force remove
+        if (keyQueue.size() > maxSize) {
+            try {
+                if (releaseLock.tryLock()) {
+                    int eleSize = keyQueue.size() - maxSize;
+                    ArrayList<K> removeKeys = new ArrayList<>(eleSize);
+                    keyQueue.drainTo(removeKeys, eleSize);
+                    for (K key : removeKeys) {
+                        V val = remove(key);
+                        cleanAction.accept(key, val);
+                        log.warn("size is over limit, force remove {'{}': '{}'}", key, val);
+                    }
+                }
+            } finally {
+                if (releaseLock.isHeldByCurrentThread()) {
+                    releaseLock.unlock();
                 }
             }
         }

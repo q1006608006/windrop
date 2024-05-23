@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import top.ivan.windrop.random.RandomEncrypt;
 import top.ivan.windrop.util.IDUtil;
-import top.ivan.jdrop.tool.JSONUtils;
+import top.ivan.jdrop.framework.util.JSONUtils;
 
 /**
  * @author Ivan

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
-import top.ivan.jdrop.framework.module.ResponseVO;
+import top.ivan.jdrop.framework.model.ResponseVO;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;

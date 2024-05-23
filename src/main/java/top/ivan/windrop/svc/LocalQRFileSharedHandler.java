@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import top.ivan.windrop.bean.FileQrProperties;
 import top.ivan.windrop.bean.WindropConfig;
 import top.ivan.windrop.util.IDUtil;
-import top.ivan.jdrop.tool.JSONUtils;
+import top.ivan.jdrop.framework.util.JSONUtils;
 
 import java.io.File;
 

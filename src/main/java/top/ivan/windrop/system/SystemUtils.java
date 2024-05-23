@@ -3,7 +3,7 @@ package top.ivan.windrop.system;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.util.StringUtils;
-import top.ivan.jdrop.tool.crypto.CryptoUtil;
+import top.ivan.jdrop.framework.util.crypto.CryptoUtil;
 
 import javax.swing.*;
 import java.io.*;

@@ -1,7 +1,7 @@
 package top.ivan.jdrop.framework;
 
 import com.google.zxing.WriterException;
-import top.ivan.jdrop.tool.QrUtils;
+import top.ivan.jdrop.framework.util.QrUtils;
 
 import javax.swing.*;
 import java.awt.*;

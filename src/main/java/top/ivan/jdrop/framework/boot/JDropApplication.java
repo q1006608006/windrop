@@ -3,6 +3,7 @@ package top.ivan.jdrop.framework.boot;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.annotation.ComponentScan;
 
 /**
  * @author Ivan
@@ -10,6 +11,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
  */
 @Slf4j
 @SpringBootApplication
+@ComponentScan(basePackages = "top.ivan.jdrop")
 public class JDropApplication {
 
     public static void main(String[] args) {
