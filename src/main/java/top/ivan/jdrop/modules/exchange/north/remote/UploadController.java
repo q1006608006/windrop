@@ -20,6 +20,8 @@ import top.ivan.jdrop.modules.exchange.north.local.resource.FileFactory;
 import top.ivan.jdrop.modules.exchange.stable.dto.UploadResult;
 import top.ivan.jdrop.modules.exchange.stable.vo.UploadInfoVO;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -62,8 +64,7 @@ public class UploadController {
                 .flatMap(info -> info.getMediaType().isTextType() ?
                         uploadTextResource(req, info) :
                         uploadStreamResource(req, info))
-                .map(ResponseVO::success)
-                .doOnSuccess(v -> eventBus.publish(new UploadEvent()));
+                .map(ResponseVO::success);
     }
 
     private Mono<AccessInfoVO> checkAccess(String ticket) {
@@ -76,6 +77,7 @@ public class UploadController {
     private Mono<UploadResult> uploadTextResource(ServerWebExchange req, AccessInfoVO info) {
         return ResourceSplitUtils.toTextResources(req, info.getMediaType())
                 .map(Base64TextResourceWrapper::new)
+                .doOnSuccess(res -> publishEvent(Arrays.asList(res), info))
                 .flatMap(res -> valid(Flux.just(res), info).thenReturn(res))
                 .flatMap(res -> res.type() == MediaType.TEXT ?
                         uploadManager.uploadText(res) :
@@ -88,6 +90,7 @@ public class UploadController {
                 .doOnNext(res -> res.getFile()
                         .renameTo(FileFactory.USER_DOWNLOAD_FACTORY.crateFile(res.getFile().getName())))
                 .collect(Collectors.toList())
+                .doOnSuccess(list -> publishEvent(list, info))
                 .flatMap(list -> info.getMediaType() == MediaType.FILE ?
                         uploadManager.uploadFile(list) :
                         uploadManager.uploadImage(list));
@@ -99,6 +102,10 @@ public class UploadController {
                 .flatMap(str -> "".equals(str) ?
                         Mono.empty() :
                         Mono.error(() -> new IllegalClientRequestException("上传资源校验异常")));
+    }
+
+    private void publishEvent(List<? extends ExchangeResource> resources, AccessInfoVO info) {
+        eventBus.publish(new UploadEvent(info, resources));
     }
 
 }
