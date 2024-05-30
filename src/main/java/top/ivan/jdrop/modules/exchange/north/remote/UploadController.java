@@ -17,6 +17,7 @@ import top.ivan.jdrop.modules.exchange.north.local.UploadManager;
 import top.ivan.jdrop.modules.exchange.north.local.resource.Base64TextResourceWrapper;
 import top.ivan.jdrop.modules.exchange.north.local.resource.ExchangeResource;
 import top.ivan.jdrop.modules.exchange.north.local.resource.FileFactory;
+import top.ivan.jdrop.modules.exchange.north.local.resource.FileResource;
 import top.ivan.jdrop.modules.exchange.stable.dto.UploadResult;
 import top.ivan.jdrop.modules.exchange.stable.vo.UploadInfoVO;
 
@@ -86,7 +87,8 @@ public class UploadController {
 
     private Mono<UploadResult> uploadStreamResource(ServerWebExchange req, AccessInfoVO info) {
         return ResourceSplitUtils.toFileResources(req, info.getMediaType(), FileFactory.USER_DOWNLOAD_RANDOM_NAME_FACTORY)
-                .transform(flux -> valid(flux, info).thenMany(flux))
+                .transform(flux -> valid(flux, info).thenMany(flux)
+                        .doOnError(e -> removeValidFailedFiles(e, flux)))
                 .doOnNext(res -> res.getFile()
                         .renameTo(FileFactory.USER_DOWNLOAD_FACTORY.crateFile(res.getFile().getName())))
                 .collect(Collectors.toList())
@@ -106,6 +108,10 @@ public class UploadController {
 
     private void publishEvent(List<? extends ExchangeResource> resources, AccessInfoVO info) {
         eventBus.publish(new UploadEvent(info, resources));
+    }
+
+    private void removeValidFailedFiles(Throwable error, Flux<FileResource> resources) {
+        resources.doOnNext(f -> f.getFile().delete()).subscribe();
     }
 
 }
