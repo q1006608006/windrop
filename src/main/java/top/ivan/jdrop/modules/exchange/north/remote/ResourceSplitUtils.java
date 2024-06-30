@@ -6,7 +6,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import top.ivan.jdrop.framework.constant.MediaType;
-import top.ivan.jdrop.modules.exchange.north.local.resource.FileFactory;
+import top.ivan.jdrop.framework.system.io.FileFactory;
 import top.ivan.jdrop.modules.exchange.north.local.resource.FileResource;
 import top.ivan.jdrop.modules.exchange.north.local.resource.MultiPartFileResource;
 import top.ivan.jdrop.modules.exchange.north.local.resource.TextResource;

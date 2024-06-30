@@ -1,5 +1,6 @@
 package top.ivan.jdrop.modules.exchange.south.port;
 
+import reactor.core.publisher.Mono;
 import top.ivan.windrop.system.clipboard.ClipType;
 
 import java.io.File;
@@ -7,14 +8,16 @@ import java.util.List;
 
 public interface ClipboardClient {
 
-    void setText(String text);
+    Mono<Void> setText(String text);
 
-    void setFiles(List<File> file);
+    Mono<Void> setUrl(String url);
 
-    void setImageFiles(List<File> images);
+    Mono<Void> setFiles(List<File> file);
 
-    ClipType getClipType();
+    Mono<Void> setImageFiles(List<File> images);
 
-    <T> T getClipboardData(ClipType type);
+    Mono<ClipType> getClipType();
+
+    <T> Mono<T> getClipboardData(ClipType type);
 
 }

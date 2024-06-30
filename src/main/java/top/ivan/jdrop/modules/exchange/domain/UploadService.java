@@ -9,7 +9,7 @@ import java.io.File;
 import java.util.List;
 
 @Service
-public class ClipboardService {
+public class UploadService {
 
     @Resource
     private ClipboardClient clipboardClient;
@@ -19,7 +19,7 @@ public class ClipboardService {
     }
 
     public Mono<Void> uploadURL(String url) {
-        return uploadText(url);
+        return Mono.fromRunnable(() -> clipboardClient.setUrl(url));
     }
 
     public Mono<Void> uploadFile(List<File> files) {

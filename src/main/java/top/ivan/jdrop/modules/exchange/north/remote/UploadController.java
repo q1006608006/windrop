@@ -10,13 +10,13 @@ import top.ivan.jdrop.framework.constant.Operate;
 import top.ivan.jdrop.framework.event.JDropEventBus;
 import top.ivan.jdrop.framework.exception.IllegalClientRequestException;
 import top.ivan.jdrop.framework.model.ResponseVO;
+import top.ivan.jdrop.framework.system.io.FileFactory;
 import top.ivan.jdrop.modules.device.northbound.local.AccessManager;
 import top.ivan.jdrop.modules.device.stable.module.dto.AccessApplyDTO;
 import top.ivan.jdrop.modules.device.stable.module.vo.AccessInfoVO;
 import top.ivan.jdrop.modules.exchange.north.local.UploadManager;
 import top.ivan.jdrop.modules.exchange.north.local.resource.Base64TextResourceWrapper;
 import top.ivan.jdrop.modules.exchange.north.local.resource.ExchangeResource;
-import top.ivan.jdrop.modules.exchange.north.local.resource.FileFactory;
 import top.ivan.jdrop.modules.exchange.north.local.resource.FileResource;
 import top.ivan.jdrop.modules.exchange.stable.dto.UploadResult;
 import top.ivan.jdrop.modules.exchange.stable.vo.UploadInfoVO;
@@ -52,10 +52,7 @@ public class UploadController {
      */
     @GetMapping
     public Mono<ResponseVO<AccessApplyDTO>> apply(Mono<UploadInfoVO> mono) {
-        return mono.flatMap(info -> accessManager.accessApply(new AccessInfoVO(info.getDeviceId(),
-                        Operate.UPLOAD,
-                        info.getMediaType(),
-                        info.getDigests().stream().collect(Collectors.joining("&&")))))
+        return mono.flatMap(info -> accessManager.accessApply(info, Operate.UPLOAD))
                 .map(ResponseVO::success);
     }
 
@@ -90,7 +87,7 @@ public class UploadController {
                 .transform(flux -> valid(flux, info).thenMany(flux)
                         .doOnError(e -> removeValidFailedFiles(e, flux)))
                 .doOnNext(res -> res.getFile()
-                        .renameTo(FileFactory.USER_DOWNLOAD_FACTORY.crateFile(res.getFile().getName())))
+                        .renameTo(FileFactory.USER_DOWNLOAD_FACTORY.createFile(res.getFile().getName())))
                 .collect(Collectors.toList())
                 .doOnSuccess(list -> publishEvent(list, info))
                 .flatMap(list -> info.getMediaType() == MediaType.FILE ?

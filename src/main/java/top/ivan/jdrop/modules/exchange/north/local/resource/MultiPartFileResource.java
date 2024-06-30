@@ -3,6 +3,7 @@ package top.ivan.jdrop.modules.exchange.north.local.resource;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.http.codec.multipart.FilePart;
 import top.ivan.jdrop.framework.constant.MediaType;
+import top.ivan.jdrop.framework.system.io.FileFactory;
 import top.ivan.jdrop.framework.util.cache.InitObject;
 
 import java.io.*;
@@ -44,7 +45,7 @@ public class MultiPartFileResource implements FileResource {
     }
 
     private File crateFile() {
-        File file = factory.crateFile(part.filename());
+        File file = factory.createFile(part.filename());
         part.transferTo(file).subscribe();
         return file;
     }

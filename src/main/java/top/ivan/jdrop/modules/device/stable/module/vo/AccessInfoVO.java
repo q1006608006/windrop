@@ -10,4 +10,5 @@ public class AccessInfoVO {
     private final Operate operate;
     private final MediaType mediaType;
     private final String digest;
+    private String token;
 }

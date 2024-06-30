@@ -15,5 +15,8 @@ public class PathUtils {
         return Paths.get(System.getProperties().getProperty("user.home"), "downloads").toString();
     }
 
+    public static String getTempPath() {
+        return System.getProperty("java.io.tmpdir");
+    }
 
 }

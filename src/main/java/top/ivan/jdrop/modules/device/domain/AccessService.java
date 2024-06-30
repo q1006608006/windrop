@@ -4,11 +4,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import top.ivan.jdrop.framework.exception.IllegalClientRequestException;
+import top.ivan.jdrop.framework.util.IDUtils;
+import top.ivan.jdrop.framework.util.cache.LimitCache;
 import top.ivan.jdrop.modules.device.domain.entity.DeviceEntity;
 import top.ivan.jdrop.modules.device.southbound.ports.DeviceRepository;
 import top.ivan.jdrop.modules.device.stable.module.vo.AccessInfoVO;
-import top.ivan.jdrop.framework.util.IDUtils;
-import top.ivan.jdrop.framework.util.cache.LimitCache;
 
 @Slf4j
 @Service
@@ -27,9 +27,10 @@ public class AccessService {
      * @param info access info
      * @return session valid token
      */
-    public Mono<String> newAccessToken(AccessInfoVO info) {
+    public Mono<String> applyAccessToken(AccessInfoVO info) {
         return Mono.just(IDUtils.get32UUID())
-                .flatMap(token -> buildAccessKey(token, info)
+                .doOnNext(token -> info.setToken(token))
+                .flatMap(token -> buildAccessKey(info)
                         .doOnNext(key -> cache.register(key, () -> info, 1, 60 * 1000))
                         .thenReturn(token));
     }
@@ -37,7 +38,7 @@ public class AccessService {
     /**
      * use access token get access info
      * <p>
-     * digest for ticket: {@link #buildAccessKey(String, AccessInfoVO)}
+     * digest for ticket: {@link #buildAccessKey(AccessInfoVO)}
      *
      * @param ticket
      * @return
@@ -60,13 +61,12 @@ public class AccessService {
      * build key for access
      * method: sha256(token, digest, password)
      *
-     * @param token
      * @param info
      * @return
      */
-    private Mono<String> buildAccessKey(String token, AccessInfoVO info) {
+    private Mono<String> buildAccessKey(AccessInfoVO info) {
         return getDevice(info.getDeviceId())
-                .map(device -> device.sign(String.join(",", token, info.getDigest())));
+                .map(device -> device.sign(String.join(",", info.getToken(), info.getDigest())));
     }
 
     private Mono<DeviceEntity> getDevice(String id) {
